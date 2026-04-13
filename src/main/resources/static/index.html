@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nodingo Auth Test</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; margin-top: 50px; color: #333; background-color: #f9f9f9; }
+        h1 { color: #2c3e50; }
+        .container { background: white; display: inline-block; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .btn {
+            display: inline-block; width: 220px; padding: 14px; margin: 10px;
+            border-radius: 8px; border: none; font-size: 16px; cursor: pointer;
+            color: #fff; font-weight: bold; text-decoration: none; transition: 0.2s;
+        }
+        .btn:hover { opacity: 0.9; transform: translateY(-2px); }
+        .naver { background-color: #1EC800; }
+        .action { background-color: #34495e; }
+        .status { margin-top: 25px; font-size: 18px; font-weight: bold; white-space: pre-line; }
+        pre {
+            text-align: left; display: inline-block; background: #2d3436;
+            border-radius: 8px; padding: 20px; width: 90%; max-width: 650px;
+            margin-top: 25px; font-size: 13px; color: #dfe6e9; overflow-x: auto;
+        }
+        hr { width: 80%; margin: 30px auto; border: 0; border-top: 1px solid #eee; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Nodingo Login Test</h1>
+
+    <div>
+        <a href="/oauth2/authorization/naver" class="btn naver">네이버로 로그인하기</a>
+    </div>
+
+    <hr>
+
+    <div>
+        <button class="btn action" onclick="reissueToken()">🔄 토큰 재발급 (Refresh)</button>
+        <button class="btn action" onclick="logout()">🚪 로그아웃 (Logout)</button>
+    </div>
+
+    <div class="status" id="status">🔒 로그아웃 상태</div>
+    <pre id="result">API 응답 결과가 여기에 표시됩니다.</pre>
+</div>
+
+<script>
+    const resultEl = document.getElementById('result');
+
+    // 페이지 로드 시 실행
+    window.onload = function() {
+        // callback.html이 localStorage에 토큰을 저장했으므로 상태만 확인
+        showStatus();
+    };
+
+    // 현재 로그인 상태 표시
+    function showStatus() {
+        const accessToken = localStorage.getItem('accessToken');
+        const statusEl = document.getElementById('status');
+
+        if (accessToken) {
+            statusEl.innerText = `✅ 로그인 완료\n토큰 보유 중`;
+            statusEl.style.color = '#1EC800';
+        } else {
+            statusEl.innerText = '🔒 로그아웃 상태';
+            statusEl.style.color = '#e74c3c';
+        }
+    }
+
+    // 1. 토큰 재발급 요청 (RTR 방식)
+    async function reissueToken() {
+        const refreshToken = localStorage.getItem('refreshToken');
+        if (!refreshToken) return alert('보유한 Refresh Token이 없습니다. 다시 로그인해주세요.');
+
+        resultEl.innerText = '🔄 재발급 요청 중...';
+
+        try {
+            const res = await fetch('/auth/refresh', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ refreshToken })
+            });
+            const result = await res.json();
+
+            if (result.success) {
+                localStorage.setItem('accessToken', result.data.accessToken);
+                localStorage.setItem('refreshToken', result.data.refreshToken);
+                resultEl.innerText = '✅ 재발급 성공:\n' + JSON.stringify(result.data, null, 2);
+                showStatus();
+            } else {
+                resultEl.innerText = '❌ 재발급 실패: ' + result.message;
+            }
+        } catch (err) {
+            resultEl.innerText = '❌ 네트워크 오류: ' + err.message;
+        }
+    }
+
+    // 2. 로그아웃 요청 (블랙리스트 등록)
+    async function logout() {
+        const accessToken = localStorage.getItem('accessToken');
+        if (!accessToken) return alert('이미 로그아웃 상태입니다.');
+
+        resultEl.innerText = '🚪 로그아웃 진행 중...';
+
+        try {
+            const res = await fetch('/auth/logout', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + accessToken }
+            });
+
+            if (res.ok) {
+                localStorage.clear();
+                resultEl.innerText = '✅ 로그아웃 성공\n(서버 블랙리스트 등록 및 로컬 스토리지 삭제 완료)';
+                showStatus();
+            } else {
+                const errorData = await res.json();
+                resultEl.innerText = '❌ 로그아웃 실패: ' + JSON.stringify(errorData, null, 2);
+            }
+        } catch (err) {
+            resultEl.innerText = '❌ 서버 통신 에러: ' + err.message;
+        }
+    }
+</script>
+
+</body>
+</html>

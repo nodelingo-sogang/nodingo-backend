@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Nodingo | 인증 처리 중</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f9f9f9;
+            color: #2c3e50;
+        }
+        .loader-container { text-align: center; }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #1EC800; /* 네이버 테마색 */
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="loader-container">
+    <div class="spinner"></div>
+    <p>로그인 정보를 확인 중입니다. 잠시만 기다려주세요...</p>
+</div>
+
+<script>
+    window.onload = function() {
+        // 1. URL 쿼리 파라미터에서 토큰 추출
+        const params = new URLSearchParams(window.location.search);
+        const accessToken = params.get('accessToken');
+        const refreshToken = params.get('refreshToken');
+
+        if (accessToken && refreshToken) {
+            // 2. LocalStorage에 토큰 저장
+            localStorage.setItem('accessToken', accessToken);
+            localStorage.setItem('refreshToken', refreshToken);
+
+            // 3. 저장 완료 후 메인 페이지(index.html)로 리다이렉트
+            // 프로젝트 설정에 따라 '/' 또는 '/index.html'로 지정하세요.
+            window.location.href = '/';
+        } else {
+            // 4. 토큰이 없는 경우 (인증 실패 등)
+            alert('로그인 인증 정보를 가져오지 못했습니다. 다시 시도해주세요.');
+            window.location.href = '/';
+        }
+    };
+</script>
+
+</body>
+</html>
