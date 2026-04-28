@@ -3,6 +3,8 @@ package nodingo.core.global.exception;
 import nodingo.core.global.dto.response.ApiResponse;
 import nodingo.core.global.exception.auth.InvalidTokenException;
 import nodingo.core.global.exception.auth.TokenNotFoundException;
+import nodingo.core.global.exception.news.NewsIllegalException;
+import nodingo.core.global.exception.user.UserNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -43,6 +45,13 @@ public class GlobalExceptionHandler {
     protected ResponseEntity<ApiResponse<?>> handleUserNotFoundException(UserNotFoundException e) {
         return buildErrorResponse(HttpStatus.NOT_FOUND, e.getMessage());
     }
+
+    //NewsIllegalException
+    @ExceptionHandler(NewsIllegalException.class)
+    protected ResponseEntity<ApiResponse<?>> handleNewsIllegalException(NewsIllegalException e) {
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, e.getMessage());
+    }
+
 
     @ExceptionHandler(Exception.class)
     protected ResponseEntity<ApiResponse<?>> handleException(Exception e) {
