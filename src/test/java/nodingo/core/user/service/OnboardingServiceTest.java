@@ -39,9 +39,6 @@ class OnboardingServiceTest {
     @Mock
     private KeywordRepository keywordRepository;
 
-    @Mock
-    private UserInterestRepository userInterestRepository;
-
     @Test
     @DisplayName("온보딩 정보 저장 성공 - 단일 페르소나 및 중분류 저장 확인")
     void saveOnboardingInfo_Success() {
