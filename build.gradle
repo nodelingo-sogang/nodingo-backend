@@ -7,6 +7,7 @@ plugins {
 group = 'nodingo'
 version = '0.0.1-SNAPSHOT'
 
+
 java {
 	toolchain {
 		languageVersion = JavaLanguageVersion.of(21)
@@ -15,6 +16,10 @@ java {
 
 repositories {
 	mavenCentral()
+}
+
+ext {
+	set('springAiVersion', "1.1.4")
 }
 
 dependencies {
@@ -59,4 +64,9 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+dependencyManagement {
+	imports {
+		mavenBom "org.springframework.ai:spring-ai-bom:${springAiVersion}"
+	}
 }

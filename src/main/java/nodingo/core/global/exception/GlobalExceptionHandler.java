@@ -3,6 +3,7 @@ package nodingo.core.global.exception;
 import nodingo.core.global.dto.response.ApiResponse;
 import nodingo.core.global.exception.auth.InvalidTokenException;
 import nodingo.core.global.exception.auth.TokenNotFoundException;
+import nodingo.core.global.exception.keyword.KeywordNotFoundException;
 import nodingo.core.global.exception.news.NewsIllegalException;
 import nodingo.core.global.exception.user.UserNotFoundException;
 import org.springframework.http.HttpStatus;
@@ -43,6 +44,12 @@ public class GlobalExceptionHandler {
     //UserNotFoundException
     @ExceptionHandler(UserNotFoundException.class)
     protected ResponseEntity<ApiResponse<?>> handleUserNotFoundException(UserNotFoundException e) {
+        return buildErrorResponse(HttpStatus.NOT_FOUND, e.getMessage());
+    }
+
+    //KeywordNotFoundException
+    @ExceptionHandler(KeywordNotFoundException.class)
+    protected ResponseEntity<ApiResponse<?>> handleKeywordNotFoundException(KeywordNotFoundException e) {
         return buildErrorResponse(HttpStatus.NOT_FOUND, e.getMessage());
     }
 
