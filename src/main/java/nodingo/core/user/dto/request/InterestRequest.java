@@ -1,5 +1,6 @@
 package nodingo.core.user.dto.request;
 
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -18,7 +19,8 @@ public class InterestRequest {
     @NotNull
     private Long macroKeywordId;
 
-    @Size(max = 6)
+    @Size(min = 1, max = 6)
+    @NotEmpty
     private List<Long> specificKeywordIds;
 
     public static InterestRequest of(Long macroKeywordId, List<Long> specificKeywordIds) {
