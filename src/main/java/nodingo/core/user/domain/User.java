@@ -108,10 +108,7 @@ public class User extends BaseTimeEntity implements UserDetails{
                                     InterestLevel level,
                                     UserInterest parent,
                                     LocalDate targetDate) {
-
-        UserInterest interest = UserInterest.create(this, keyword, level, parent, targetDate);
-        this.interests.add(interest);
-        return interest;
+        return UserInterest.create(this, keyword, level, parent, targetDate);
     }
 
     public List<UserInterest> getInterests() {
