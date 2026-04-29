@@ -17,7 +17,6 @@ spring:
       pgvector:
         index-type: HNSW
         distance-type: COSINE_DISTANCE
-        dimensions: 1536
 
   datasource:
     url: ${DB_URL}

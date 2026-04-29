@@ -5,6 +5,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import nodingo.core.global.domain.BaseTimeEntity;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,8 +32,13 @@ public class Keyword extends BaseTimeEntity {
     @Column(nullable = false, length = 100)
     private String normalizedWord;
 
+    @JdbcTypeCode(SqlTypes.VECTOR)
+    @Column(columnDefinition = "vector")
+    private float[] embedding;
+
     @OneToMany(mappedBy = "keyword", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<KeywordAlias> aliases = new ArrayList<>();
+
 
     public static Keyword create(String word) {
         Keyword keyword = new Keyword();
@@ -39,6 +46,10 @@ public class Keyword extends BaseTimeEntity {
         keyword.normalizedWord = normalize(word);
         keyword.addAlias(word);
         return keyword;
+    }
+
+    public void updateEmbedding(float[] embedding) {
+        this.embedding = embedding;
     }
 
     public void addAlias(String alias) {
