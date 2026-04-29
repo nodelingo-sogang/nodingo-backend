@@ -15,15 +15,13 @@ public class SaveOnboardingCommand {
 
     private final Long userId;
     private final List<UserPersona> personas;
-    private final List<InterestCommand> interests;
+    private final InterestCommand interest;
 
     public static SaveOnboardingCommand from(Long userId, OnboardingRequest request) {
         return SaveOnboardingCommand.builder()
                 .userId(userId)
                 .personas(request.getPersonas())
-                .interests(request.getInterests().stream()
-                        .map(InterestCommand::from)
-                        .toList())
+                .interest(InterestCommand.from(request.getInterest()))
                 .build();
     }
 }

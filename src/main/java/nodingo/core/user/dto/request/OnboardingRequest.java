@@ -1,6 +1,7 @@
 package nodingo.core.user.dto.request;
 
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -16,16 +17,17 @@ import java.util.List;
 @Builder
 public class OnboardingRequest {
 
-    @Size(min = 1, max = 2)
+    @Size(min = 1, max = 1)
+    @NotNull
     private List<UserPersona> personas;
 
-    @NotEmpty
-    private List<InterestRequest> interests;
+    @NotNull
+    private InterestRequest interest;
 
-    public static OnboardingRequest of(List<UserPersona> personas, List<InterestRequest> interests) {
+    public static OnboardingRequest of(List<UserPersona> personas, InterestRequest interest) {
         return OnboardingRequest.builder()
                 .personas(personas)
-                .interests(interests)
+                .interest(interest)
                 .build();
     }
 }
