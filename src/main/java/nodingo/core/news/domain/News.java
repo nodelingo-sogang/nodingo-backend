@@ -45,7 +45,7 @@ public class News extends BaseTimeEntity {
 
     @JdbcTypeCode(SqlTypes.VECTOR)
     @Column(columnDefinition = "vector")
-    private double[] embedding;
+    private float[] embedding;
 
     @Column(nullable = false)
     private LocalDateTime publishedAt;
@@ -74,7 +74,7 @@ public class News extends BaseTimeEntity {
         this.newsKeywords.add(nk);
     }
 
-    public void updateEmbedding(double[] embedding) {
+    public void updateEmbedding(float[] embedding) {
         this.embedding = embedding;
     }
 }

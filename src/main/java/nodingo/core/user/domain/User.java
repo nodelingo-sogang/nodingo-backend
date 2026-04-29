@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import nodingo.core.global.domain.BaseTimeEntity;
 import nodingo.core.keyword.domain.Keyword;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -50,6 +52,10 @@ public class User extends BaseTimeEntity implements UserDetails{
 
     private String refreshToken;
 
+    @JdbcTypeCode(SqlTypes.VECTOR)
+    @Column(columnDefinition = "vector")
+    private float[] embedding;
+
     @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "user_personas", joinColumns = @JoinColumn(name = "user_id"))
     @Enumerated(EnumType.STRING)
@@ -79,6 +85,10 @@ public class User extends BaseTimeEntity implements UserDetails{
         user.name = name;
         user.email = email;
         return user;
+    }
+
+    public void updateEmbedding(float[] embedding) {
+        this.embedding = embedding;
     }
 
     public void updateInfo(String name, String email) {
