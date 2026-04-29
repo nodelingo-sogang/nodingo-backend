@@ -104,8 +104,8 @@ public class User extends BaseTimeEntity implements UserDetails{
         if (personas == null || personas.isEmpty()) {
             throw new IllegalArgumentException("최소 1개의 페르소나를 선택해야 합니다.");
         }
-        if (personas.size() > 2) {
-            throw new IllegalArgumentException("페르소나는 최대 2개까지만 선택 가능합니다.");
+        if (personas.size() > 1) {
+            throw new IllegalArgumentException("페르소나(대분류)는 1개만 선택 가능합니다.");
         }
         this.personas = personas;
     }

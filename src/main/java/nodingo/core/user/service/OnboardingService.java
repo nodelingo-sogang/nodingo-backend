@@ -38,21 +38,18 @@ public class OnboardingService {
         user.completeOnboarding(command.getPersonas());
 
         List<Long> allKeywordIds = extractAllKeywordIds(command);
-
         Map<Long, Keyword> keywordMap = getKeywordMap(allKeywordIds);
 
-        for (InterestCommand interestCmd : command.getInterests()) {
-            Keyword macroKeyword = getKeywordFromMap(keywordMap, interestCmd.getMacroId());
+        InterestCommand interestCmd = command.getInterest();
 
-            UserInterest macroInterest = user.addInterest(
-                    macroKeyword, InterestLevel.MACRO, null, LocalDate.now());
+        Keyword macroKeyword = getKeywordFromMap(keywordMap, interestCmd.getMacroId());
+        UserInterest macroInterest = user.addInterest(
+                macroKeyword, InterestLevel.MACRO, null, LocalDate.now());
 
-            for (Long specificId : interestCmd.getSpecificIds()) {
-                Keyword specificKeyword = getKeywordFromMap(keywordMap, specificId);
-
-                user.addInterest(
-                        specificKeyword, InterestLevel.SPECIFIC, macroInterest, LocalDate.now());
-            }
+        for (Long specificId : interestCmd.getSpecificIds()) {
+            Keyword specificKeyword = getKeywordFromMap(keywordMap, specificId);
+            user.addInterest(
+                    specificKeyword, InterestLevel.SPECIFIC, macroInterest, LocalDate.now());
         }
     }
 
@@ -62,9 +59,11 @@ public class OnboardingService {
     }
 
     private List<Long> extractAllKeywordIds(SaveOnboardingCommand command) {
-        return command.getInterests().stream()
-                .flatMap(i -> Stream.concat(Stream.of(i.getMacroId()), i.getSpecificIds().stream()))
-                .toList();
+        InterestCommand interest = command.getInterest();
+        return Stream.concat(
+                Stream.of(interest.getMacroId()),
+                interest.getSpecificIds().stream()
+        ).toList();
     }
 
     private Map<Long, Keyword> getKeywordMap(List<Long> ids) {
