@@ -10,8 +10,8 @@ import java.util.List;
 
 public interface NewsRepository extends JpaRepository<News, Long>, NewsRepositoryCustom {
 
-    boolean existsByNewsUri(String newsUri);
+    boolean existsByUri(String uri);
 
-    @Query("select n.newsUri from News n where n.newsUri in :newsUris")
-    List<String> findExistingUris(@Param("newsUris") List<String> newsUris);
+    @Query("select n.uri from News n where n.uri in :uris")
+    List<String> findExistingUris(@Param("uris") List<String> uris);
 }

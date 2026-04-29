@@ -36,12 +36,12 @@ public class NewsRepositoryImpl implements NewsRepositoryCustom {
         List<NewsResult> content = queryFactory
                 .selectDistinct(new QNewsResult(
                         news.id,
-                        news.newsUri,
+                        news.uri,
                         news.title,
                         news.body,
                         news.url,
-                        news.language,
-                        news.publishedAt
+                        news.lang,
+                        news.dateTimePub
                 ))
                 .from(news)
                 .join(news.newsKeywords, newsKeyword)
@@ -50,9 +50,9 @@ public class NewsRepositoryImpl implements NewsRepositoryCustom {
                 .where(
                         keyword.normalizedWord.in(normalized)
                                 .or(keywordAlias.alias.in(normalized)),
-                        news.publishedAt.goe(limitTime)
+                        news.dateTimePub.goe(limitTime)
                 )
-                .orderBy(news.publishedAt.desc())
+                .orderBy(news.dateTimePub.desc())
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize() + 1)
                 .fetch();
@@ -67,19 +67,19 @@ public class NewsRepositoryImpl implements NewsRepositoryCustom {
         List<NewsResult> content = queryFactory
                 .select(new QNewsResult(
                         news.id,
-                        news.newsUri,
+                        news.uri,
                         news.title,
                         news.body,
                         news.url,
-                        news.language,
-                        news.publishedAt
+                        news.lang,
+                        news.dateTimePub
                 ))
                 .from(news)
                 .where(
-                        news.language.eq(language),
-                        news.publishedAt.goe(limitTime)
+                        news.lang.eq(language),
+                        news.dateTimePub.goe(limitTime)
                 )
-                .orderBy(news.publishedAt.desc())
+                .orderBy(news.dateTimePub.desc())
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize() + 1)
                 .fetch();

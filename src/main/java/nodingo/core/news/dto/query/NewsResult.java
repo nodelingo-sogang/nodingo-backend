@@ -8,22 +8,22 @@ import java.time.LocalDateTime;
 @Getter
 public class NewsResult {
     private Long id;
-    private String newsUri;
+    private String uri;
     private String title;
     private String body;
     private String url;
-    private String language;
-    private LocalDateTime publishedAt;
+    private String lang;
+    private LocalDateTime dateTimePub;
 
     @QueryProjection
-    public NewsResult(Long id, String newsUri, String title, String body,
-                      String url, String language, LocalDateTime publishedAt) {
+    public NewsResult(Long id, String uri, String title, String body,
+                      String url, String lang, LocalDateTime dateTimePub) {
         this.id = id;
-        this.newsUri = newsUri;
+        this.uri = uri;
         this.title = title;
         this.body = body;
         this.url = url;
-        this.language = language;
-        this.publishedAt = publishedAt;
+        this.lang = lang;
+        this.dateTimePub = dateTimePub;
     }
 }

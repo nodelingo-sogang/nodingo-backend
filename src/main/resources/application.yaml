@@ -72,6 +72,11 @@ springdoc:
     persistAuthorization: true
   override-with-generic-response: false
 
+news:
+  api:
+    key: ${EVENT_REGISTRY_API_KEY}
+    base-url: https://eventregistry.org/api/v1/article/getArticles
+
 app:
   oauth2:
     redirect-uri: /auth/callback.html
