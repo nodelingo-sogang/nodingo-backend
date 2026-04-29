@@ -14,11 +14,10 @@ import org.springframework.data.domain.Slice;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import static nodingo.core.news.domain.QKeyword.keyword;
-import static nodingo.core.news.domain.QKeywordAlias.keywordAlias;
+import static nodingo.core.keyword.domain.QKeyword.keyword;
+import static nodingo.core.keyword.domain.QKeywordAlias.keywordAlias;
+import static nodingo.core.keyword.domain.QNewsKeyword.newsKeyword;
 import static nodingo.core.news.domain.QNews.news;
-import static nodingo.core.news.domain.QNewsKeyword.newsKeyword;
-
 
 @RequiredArgsConstructor
 public class NewsRepositoryImpl implements NewsRepositoryCustom {
@@ -41,7 +40,6 @@ public class NewsRepositoryImpl implements NewsRepositoryCustom {
                         news.title,
                         news.body,
                         news.url,
-                        news.imageUrl,
                         news.language,
                         news.publishedAt
                 ))
@@ -73,7 +71,6 @@ public class NewsRepositoryImpl implements NewsRepositoryCustom {
                         news.title,
                         news.body,
                         news.url,
-                        news.imageUrl,
                         news.language,
                         news.publishedAt
                 ))

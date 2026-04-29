@@ -1,0 +1,80 @@
+package nodingo.core.user.service;
+
+import lombok.RequiredArgsConstructor;
+import nodingo.core.global.exception.keyword.KeywordNotFoundException;
+import nodingo.core.global.exception.user.UserNotFoundException;
+import nodingo.core.keyword.domain.Keyword;
+import nodingo.core.keyword.repository.KeywordRepository;
+import nodingo.core.user.domain.InterestLevel;
+import nodingo.core.user.domain.User;
+import nodingo.core.user.domain.UserInterest;
+import nodingo.core.user.dto.command.InterestCommand;
+import nodingo.core.user.dto.command.SaveOnboardingCommand;
+import nodingo.core.user.repository.UserInterestRepository;
+import nodingo.core.user.repository.UserRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+@Transactional
+public class OnboardingService {
+
+    private final UserRepository userRepository;
+    private final KeywordRepository keywordRepository;
+    private final UserInterestRepository userInterestRepository;
+
+    public void saveOnboardingInfo(SaveOnboardingCommand command) {
+        User user = getUser(command.getUserId());
+
+        userInterestRepository.deleteTodayInterests(user.getId(), LocalDate.now());
+
+        user.completeOnboarding(command.getPersonas());
+
+        List<Long> allKeywordIds = extractAllKeywordIds(command);
+
+        Map<Long, Keyword> keywordMap = getKeywordMap(allKeywordIds);
+
+        for (InterestCommand interestCmd : command.getInterests()) {
+            Keyword macroKeyword = getKeywordFromMap(keywordMap, interestCmd.getMacroId());
+
+            UserInterest macroInterest = user.addInterest(
+                    macroKeyword, InterestLevel.MACRO, null, LocalDate.now());
+
+            for (Long specificId : interestCmd.getSpecificIds()) {
+                Keyword specificKeyword = getKeywordFromMap(keywordMap, specificId);
+
+                user.addInterest(
+                        specificKeyword, InterestLevel.SPECIFIC, macroInterest, LocalDate.now());
+            }
+        }
+    }
+
+    private User getUser(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("존재하지 않는 사용자입니다."));
+    }
+
+    private List<Long> extractAllKeywordIds(SaveOnboardingCommand command) {
+        return command.getInterests().stream()
+                .flatMap(i -> Stream.concat(Stream.of(i.getMacroId()), i.getSpecificIds().stream()))
+                .toList();
+    }
+
+    private Map<Long, Keyword> getKeywordMap(List<Long> ids) {
+        return keywordRepository.findAllById(ids).stream()
+                .collect(Collectors.toMap(Keyword::getId, k -> k));
+    }
+
+    private Keyword getKeywordFromMap(Map<Long, Keyword> map, Long id) {
+        Keyword keyword = map.get(id);
+        if (keyword == null) throw new KeywordNotFoundException("존재하지 않는 키워드입니다. ID: " + id);
+        return keyword;
+    }
+}
