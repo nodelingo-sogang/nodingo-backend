@@ -33,7 +33,7 @@ public class Keyword extends BaseTimeEntity {
     private String normalizedWord;
 
     @JdbcTypeCode(SqlTypes.VECTOR)
-    @Column(columnDefinition = "vector")
+    @Column(columnDefinition = "vector(1536)")
     private float[] embedding;
 
     @OneToMany(mappedBy = "keyword", cascade = CascadeType.ALL, orphanRemoval = true)

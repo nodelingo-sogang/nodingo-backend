@@ -53,7 +53,7 @@ public class User extends BaseTimeEntity implements UserDetails{
     private String refreshToken;
 
     @JdbcTypeCode(SqlTypes.VECTOR)
-    @Column(columnDefinition = "vector")
+    @Column(columnDefinition = "vector(1536)")
     private float[] embedding;
 
     @ElementCollection(fetch = FetchType.LAZY)

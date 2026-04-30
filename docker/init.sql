@@ -1,5 +1,21 @@
 -- ================================
--- 🔥 Spring Batch Meta Tables
+-- Spring Batch Sequences
+-- ================================
+
+CREATE SEQUENCE IF NOT EXISTS BATCH_JOB_SEQ
+    START WITH 1
+    INCREMENT BY 1;
+
+CREATE SEQUENCE IF NOT EXISTS BATCH_JOB_EXECUTION_SEQ
+    START WITH 1
+    INCREMENT BY 1;
+
+CREATE SEQUENCE IF NOT EXISTS BATCH_STEP_EXECUTION_SEQ
+    START WITH 1
+    INCREMENT BY 1;
+
+-- ================================
+-- Spring Batch Meta Tables
 -- ================================
 
 CREATE TABLE IF NOT EXISTS BATCH_JOB_INSTANCE  (
@@ -75,20 +91,21 @@ CREATE TABLE IF NOT EXISTS BATCH_STEP_EXECUTION_CONTEXT  (
 );
 
 -- ================================
--- 🔥 pgvector
+-- pgvector
 -- ================================
 
 CREATE EXTENSION IF NOT EXISTS vector;
 
 -- ================================
--- 🔥 Vector Index (테이블 생성 이후 실행됨)
+-- Vector Indexes
+-- Run after Hibernate creates entity tables.
 -- ================================
 
-CREATE INDEX IF NOT EXISTS idx_news_embedding
+/*CREATE INDEX IF NOT EXISTS idx_news_embedding
 ON news USING hnsw (embedding vector_cosine_ops);
 
 CREATE INDEX IF NOT EXISTS idx_keyword_embedding
 ON keywords USING hnsw (embedding vector_cosine_ops);
 
 CREATE INDEX IF NOT EXISTS idx_user_embedding
-ON users USING hnsw (embedding vector_cosine_ops);
+ON users USING hnsw (embedding vector_cosine_ops);*/
