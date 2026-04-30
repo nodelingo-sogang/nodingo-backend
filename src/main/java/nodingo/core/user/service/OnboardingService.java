@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -29,6 +30,7 @@ public class OnboardingService {
     private final UserRepository userRepository;
     private final KeywordRepository keywordRepository;
     private final UserInterestRepository userInterestRepository;
+    private final UserVectorService userVectorService;
 
     public void saveOnboardingInfo(SaveOnboardingCommand command) {
         User user = getUser(command.getUserId());
@@ -40,8 +42,9 @@ public class OnboardingService {
         List<Long> allKeywordIds = extractAllKeywordIds(command);
         Map<Long, Keyword> keywordMap = getKeywordMap(allKeywordIds);
 
-        InterestCommand interestCmd = command.getInterest();
+        List<Keyword> selectedKeywords = new ArrayList<>(keywordMap.values());
 
+        InterestCommand interestCmd = command.getInterest();
         Keyword macroKeyword = getKeywordFromMap(keywordMap, interestCmd.getMacroId());
         UserInterest macroInterest = user.addInterest(
                 macroKeyword, InterestLevel.MACRO, null, LocalDate.now());
@@ -51,6 +54,8 @@ public class OnboardingService {
             user.addInterest(
                     specificKeyword, InterestLevel.SPECIFIC, macroInterest, LocalDate.now());
         }
+
+        userVectorService.initUserEmbedding(user, selectedKeywords);
     }
 
     private User getUser(Long userId) {

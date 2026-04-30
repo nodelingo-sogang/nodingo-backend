@@ -35,4 +35,8 @@ out/
 
 ### VS Code ###
 .vscode/
+
 .env
+
+# Docker database data
+postgres_data/
