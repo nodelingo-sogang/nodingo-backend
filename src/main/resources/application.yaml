@@ -18,6 +18,12 @@ spring:
         index-type: HNSW
         distance-type: COSINE_DISTANCE
 
+  batch:
+    jdbc:
+      initialize-schema: always
+    job:
+      enabled: false
+
   datasource:
     url: ${DB_URL}
     driver-class-name: org.postgresql.Driver
@@ -34,7 +40,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: create
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -75,7 +81,7 @@ springdoc:
 news:
   api:
     key: ${EVENT_REGISTRY_API_KEY}
-    base-url: https://eventregistry.org/api/v1/article/getArticles
+    base-url: https://eventregistry.org/api/v1
 
 app:
   oauth2:
