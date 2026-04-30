@@ -26,7 +26,7 @@ public class NewsFetchService {
 
     public NewsApiResponse fetchNews(LocalDate date, int page, String lang) {
         log.info(">>>> [NewsFetchService] API request - date: {}, page: {}, language: {}",
-                date, page, (lang == null ? "KOR/ENG Fixed" : lang));
+                date, page, (lang == null ? "KOR Fixed" : lang));
 
         try {
             return newsApiClient.post()
@@ -57,7 +57,7 @@ public class NewsFetchService {
         if (lang != null && !lang.isBlank()) {
             body.put("lang", lang);
         } else {
-            body.put("lang", new String[]{"kor", "eng"});
+            body.put("lang", new String[]{"kor"});
         }
 
         body.put("articlesPage", page);
