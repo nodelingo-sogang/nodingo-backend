@@ -13,6 +13,7 @@ import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.ArrayList;
+
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -35,7 +36,7 @@ public class News extends BaseTimeEntity {
     @Column(nullable = false, unique = true)
     private String uri;
 
-    @Column(nullable = false, length = 500)
+    @Column(columnDefinition = "TEXT", nullable = false)
     private String title;
 
     // 초기에는 원문 전체, 이후 LLM을 통해 200자 요약본으로 업데이트될 필드
