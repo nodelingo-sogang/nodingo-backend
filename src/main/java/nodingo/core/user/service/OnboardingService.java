@@ -12,6 +12,7 @@ import nodingo.core.user.dto.command.InterestCommand;
 import nodingo.core.user.dto.command.SaveOnboardingCommand;
 import nodingo.core.user.repository.UserInterestRepository;
 import nodingo.core.user.repository.UserRepository;
+import nodingo.core.user.service.vector.UserVectorService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

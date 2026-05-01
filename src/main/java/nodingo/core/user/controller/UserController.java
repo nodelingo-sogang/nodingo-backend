@@ -1,7 +1,6 @@
 package nodingo.core.user.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -9,8 +8,14 @@ import lombok.RequiredArgsConstructor;
 import nodingo.core.global.auth.CustomOAuth2User;
 import nodingo.core.global.dto.response.ApiResponse;
 import nodingo.core.user.domain.User;
+import nodingo.core.user.domain.UserPersona;
 import nodingo.core.user.dto.command.SaveOnboardingCommand;
 import nodingo.core.user.dto.request.OnboardingRequest;
+import nodingo.core.user.dto.response.KeywordListResponse;
+import nodingo.core.user.dto.response.PersonaListResponse;
+import nodingo.core.user.dto.result.KeywordListResult;
+import nodingo.core.user.dto.result.PersonaListResult;
+import nodingo.core.user.service.OnboardingQueryService;
 import nodingo.core.user.service.OnboardingService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +29,50 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     private final OnboardingService onboardingService;
+    private final OnboardingQueryService onboardingQueryService;
+
+    @Operation(
+            summary = "대분류(Persona) 목록 조회",
+            description = "온보딩 시작 시 선택 가능한 페르소나(대분류) 목록을 조회합니다."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "성공적으로 페르소나 목록을 조회했습니다.")
+    })
+    @GetMapping("/personas")
+    public ResponseEntity<ApiResponse<PersonaListResponse>> getPersonas(
+            @AuthenticationPrincipal CustomOAuth2User customOAuth2User) {
+        PersonaListResult result = onboardingQueryService.getPersonas(customOAuth2User.getUser().getId());
+        return ResponseEntity.ok(new ApiResponse<>(true, 200, "성공적으로 유저 맞춤형 페르소나 목록을 조회했습니다.", PersonaListResponse.from(result)));
+    }
+
+    @Operation(
+            summary = "중분류(Macro) 목록 조회",
+            description = "선택한 페르소나에 해당하는 중분류 키워드 목록을 조회합니다."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "성공적으로 중분류 목록을 조회했습니다.")
+    })
+    public ResponseEntity<ApiResponse<KeywordListResponse>> getMacros(
+            @AuthenticationPrincipal CustomOAuth2User customOAuth2User,
+            @RequestParam UserPersona persona) {
+        KeywordListResult result = onboardingQueryService.getMacroKeywords(customOAuth2User.getUser().getId(), persona);
+        return ResponseEntity.ok(new ApiResponse<>(true, 200, "성공적으로 유저 맞춤형 중분류 목록을 조회했습니다.",KeywordListResponse.from(result)));
+    }
+
+    @Operation(
+            summary = "소분류(Specific) 목록 조회",
+            description = "선택한 중분류 ID 하위의 소분류 키워드 목록을 조회합니다."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "성공적으로 소분류 목록을 조회했습니다.")
+    })
+    @GetMapping("/keywords/specific")
+    public ResponseEntity<ApiResponse<KeywordListResponse>> getSpecifics(
+            @AuthenticationPrincipal CustomOAuth2User customOAuth2User,
+            @RequestParam Long macroId) {
+        KeywordListResult result = onboardingQueryService.getSpecificKeywords(customOAuth2User.getUser().getId(), macroId);
+        return ResponseEntity.ok(new ApiResponse<>(true, 200, "성공적으로 유저 맞춤형 소분류 목록을 조회했습니다.", KeywordListResponse.from(result)));
+    }
 
     @Operation(
             summary = "유저 온보딩 관심사 설정",

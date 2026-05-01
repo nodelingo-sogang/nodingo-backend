@@ -1,4 +1,4 @@
-package nodingo.core.news.service;
+package nodingo.core.news.service.vector;
 
 import lombok.RequiredArgsConstructor;
 import nodingo.core.news.domain.News;

@@ -1,4 +1,4 @@
-package nodingo.core.user.service;
+package nodingo.core.user.service.vector;
 
 import lombok.RequiredArgsConstructor;
 import nodingo.core.keyword.domain.Keyword;
