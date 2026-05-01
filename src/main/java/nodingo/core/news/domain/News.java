@@ -28,6 +28,8 @@ import java.util.ArrayList;
 )
 public class News extends BaseTimeEntity {
 
+    private static final int EMBEDDING_DIMENSION = 1536;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -75,6 +77,7 @@ public class News extends BaseTimeEntity {
         news.lang = lang;
         news.sentiment = sentiment;
         news.dateTimePub = dateTimePub;
+        news.embedding = emptyEmbedding();
         return news;
     }
 
@@ -84,11 +87,15 @@ public class News extends BaseTimeEntity {
     }
 
     public void updateEmbedding(float[] embedding) {
-        this.embedding = embedding;
+        this.embedding = embedding != null ? embedding : emptyEmbedding();
     }
 
     public void addKeyword(Keyword keyword, double weight) {
         NewsKeyword nk = NewsKeyword.create(this, keyword, weight);
         this.newsKeywords.add(nk);
+    }
+
+    private static float[] emptyEmbedding() {
+        return new float[EMBEDDING_DIMENSION];
     }
 }

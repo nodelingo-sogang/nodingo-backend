@@ -1,9 +1,10 @@
 package nodingo.core.batch.integration;
 
-import nodingo.core.batch.dto.ArticleWrapper;
-import nodingo.core.batch.dto.NewsApiItem;
-import nodingo.core.batch.dto.NewsApiResponse;
+import lombok.extern.slf4j.Slf4j;
+import nodingo.core.batch.dto.*;
 import nodingo.core.batch.service.NewsFetchService;
+import nodingo.core.keyword.repository.KeywordRepository;
+import nodingo.core.news.domain.News;
 import nodingo.core.news.repository.NewsRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,14 +25,16 @@ import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.context.jdbc.SqlConfig;
 
 import java.lang.reflect.Field;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 
+@Slf4j
 @SpringBootTest
 @SpringBatchTest
 @ActiveProfiles("test")
@@ -55,49 +58,132 @@ class NewsBatchIntegrationTest {
     private NewsRepository newsRepository;
 
     @Autowired
+    private KeywordRepository keywordRepository;
+
+    @Autowired
     private JdbcTemplate jdbcTemplate;
 
     @BeforeEach
     void setUp() {
         jobLauncherTestUtils.setJob(dailyNewsJob);
 
-        // News 관련 테이블만 초기화
-        jdbcTemplate.execute("TRUNCATE TABLE news RESTART IDENTITY CASCADE");
+        jdbcTemplate.execute("""
+            TRUNCATE TABLE
+                news_keywords,
+                keyword_alias,
+                keywords,
+                news
+            RESTART IDENTITY CASCADE
+        """);
     }
 
     @Test
     void jobShouldCompleteSuccessfully() throws Exception {
-
         // given
-        NewsApiItem item = createItem("uri1");
+        EventApiItem eventItem = createMockEvent("event-uri-1", "article-uri-1");
+        NewsApiItem fullArticle = createMockArticle("article-uri-1");
 
-        ArticleWrapper wrapper = new ArticleWrapper();
-        setField(wrapper, "results", List.of(item));
+        EventWrapper wrapper = new EventWrapper();
+        setField(wrapper, "results", List.of(eventItem));
         setField(wrapper, "pages", 1);
 
-        NewsApiResponse response = new NewsApiResponse();
-        setField(response, "articles", wrapper);
+        EventApiResponse response = new EventApiResponse();
+        setField(response, "events", wrapper);
 
-        given(newsFetchService.fetchNews(any(), anyInt(), nullable(String.class)))
+        given(newsFetchService.fetchEvents(any(), anyInt()))
                 .willReturn(response);
 
+        given(newsFetchService.fetchArticle(eq("article-uri-1")))
+                .willReturn(fullArticle);
+
         JobParameters jobParameters = new JobParametersBuilder()
-                .addLong("time", System.currentTimeMillis())
+                .addLocalDateTime("requestTime", LocalDateTime.now())
+                .addString("runId", UUID.randomUUID().toString())
                 .toJobParameters();
 
         // when
         JobExecution jobExecution = jobLauncherTestUtils.launchJob(jobParameters);
 
-        // 실패 원인 출력용
-        jobExecution.getAllFailureExceptions()
-                .forEach(Throwable::printStackTrace);
-
         // then
-        assertThat(jobExecution.getStatus())
-                .isEqualTo(BatchStatus.COMPLETED);
+        assertThat(jobExecution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
 
-        assertThat(newsRepository.count())
-                .isGreaterThan(0);
+        assertThat(newsRepository.count()).isEqualTo(1);
+        assertThat(keywordRepository.count()).isEqualTo(1);
+
+        Map<String, Object> savedNews = jdbcTemplate.queryForMap("""
+        SELECT uri, title, body, url, lang
+        FROM news
+        WHERE uri = ?
+        """, "article-uri-1");
+
+        assertThat(savedNews.get("uri")).isEqualTo("article-uri-1");
+        assertThat(savedNews.get("title")).isEqualTo("Full Article Title");
+        assertThat((String) savedNews.get("body")).contains("full article body");
+        assertThat(savedNews.get("url")).isEqualTo("https://news.com/article-uri-1");
+        assertThat(savedNews.get("lang")).isEqualTo("kor");
+
+        Integer newsKeywordCount = jdbcTemplate.queryForObject("""
+        SELECT COUNT(*)
+        FROM news_keywords nk
+        JOIN news n ON nk.news_id = n.id
+        WHERE n.uri = ?
+        """, Integer.class, "article-uri-1");
+
+        assertThat(newsKeywordCount).isEqualTo(1);
+
+        log.info(">>>> Saved News URI: {}", savedNews.get("uri"));
+        log.info(">>>> Saved News Title: {}", savedNews.get("title"));
+        log.info(">>>> Saved News Body: {}", savedNews.get("body"));
+        log.info(">>>> Saved News Keywords Count: {}", newsKeywordCount);
+    }
+
+    private EventApiItem createMockEvent(String eventUri, String articleUri) {
+        EventApiItem event = new EventApiItem();
+
+        setField(event, "uri", eventUri);
+        setField(event, "sentiment", 0.5);
+
+        EventTitle title = new EventTitle();
+        setField(title, "kor", "테스트 이벤트 제목");
+        setField(title, "eng", "Test Event Title");
+        setField(event, "title", title);
+
+        Concept concept = new Concept();
+        setField(concept, "type", "org");
+        setField(concept, "score", 100);
+
+        ConceptLabel label = new ConceptLabel();
+        setField(label, "kor", "테슬라");
+        setField(label, "eng", "Tesla");
+        setField(concept, "label", label);
+
+        setField(event, "concepts", List.of(concept));
+
+        NewsApiItem infoArticle = new NewsApiItem();
+        setField(infoArticle, "uri", articleUri);
+        setField(infoArticle, "url", "https://news.com/" + articleUri);
+        setField(infoArticle, "lang", "kor");
+
+        InfoArticleWrapper articleWrapper = new InfoArticleWrapper();
+        setField(articleWrapper, "kor", infoArticle);
+        setField(articleWrapper, "eng", infoArticle);
+
+        setField(event, "infoArticle", articleWrapper);
+
+        return event;
+    }
+
+    private NewsApiItem createMockArticle(String articleUri) {
+        NewsApiItem articleItem = new NewsApiItem();
+
+        setField(articleItem, "uri", articleUri);
+        setField(articleItem, "url", "https://news.com/" + articleUri);
+        setField(articleItem, "lang", "kor");
+        setField(articleItem, "dateTimePub", "2026-05-01T10:00:00Z");
+        setField(articleItem, "title", "Full Article Title");
+        setField(articleItem, "body", "This is the full article body content. This body should be saved into news table.");
+
+        return articleItem;
     }
 
     private void setField(Object target, String fieldName, Object value) {
@@ -108,19 +194,5 @@ class NewsBatchIntegrationTest {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-    }
-
-    private NewsApiItem createItem(String uri) {
-        NewsApiItem item = new NewsApiItem();
-
-        setField(item, "uri", uri);
-        setField(item, "title", "title");
-        setField(item, "body", "body");
-        setField(item, "url", "https://example.com/news/" + uri);
-        setField(item, "lang", "eng");
-        setField(item, "sentiment", 0.1);
-        setField(item, "dateTimePub", "2024-01-01T10:00:00");
-
-        return item;
     }
 }

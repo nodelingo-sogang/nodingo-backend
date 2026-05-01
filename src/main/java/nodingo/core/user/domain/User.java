@@ -29,7 +29,9 @@ import java.util.List;
                 @Index(name = "idx_email", columnList = "email")
         }
 )
-public class User extends BaseTimeEntity implements UserDetails{
+public class User extends BaseTimeEntity implements UserDetails {
+
+    private static final int EMBEDDING_DIMENSION = 1536;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -84,11 +86,12 @@ public class User extends BaseTimeEntity implements UserDetails{
         user.username = username;
         user.name = name;
         user.email = email;
+        user.embedding = emptyEmbedding();
         return user;
     }
 
     public void updateEmbedding(float[] embedding) {
-        this.embedding = embedding;
+        this.embedding = embedding != null ? embedding : emptyEmbedding();
     }
 
     public void updateInfo(String name, String email) {
@@ -127,5 +130,9 @@ public class User extends BaseTimeEntity implements UserDetails{
 
     protected List<UserInterest> getInterestsInternal() {
         return interests;
+    }
+
+    private static float[] emptyEmbedding() {
+        return new float[EMBEDDING_DIMENSION];
     }
 }
