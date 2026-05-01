@@ -1,11 +1,16 @@
 package nodingo.core.global.config.news;
 
+import java.time.OffsetDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import nodingo.core.batch.dto.Concept;
+import nodingo.core.batch.dto.EventApiItem;
+import nodingo.core.batch.dto.EventApiResponse;
 import nodingo.core.batch.dto.NewsApiItem;
-import nodingo.core.batch.dto.NewsApiResponse;
 import nodingo.core.batch.listener.MyJobListener;
 import nodingo.core.batch.service.NewsFetchService;
+import nodingo.core.keyword.domain.Keyword;
+import nodingo.core.keyword.repository.KeywordRepository;
 import nodingo.core.news.domain.News;
 import nodingo.core.news.repository.NewsRepository;
 import org.springframework.batch.core.Job;
@@ -22,6 +27,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -31,15 +37,13 @@ import java.util.stream.Collectors;
 public class NewsBatchConfig {
 
     private static final int CHUNK_SIZE = 20;
+    private static final int MAX_TEST_PAGES = 20; // Get Events는 페이지당 50개니 최대 500개
 
-    // 테스트/개발용 제한
-    // articlesCount=100 기준: 10 pages = 최대 1000개
-    private static final int MAX_TEST_PAGES = 10;
-
+    private final NewsFetchService newsFetchService;
     private final JobRepository jobRepository;
     private final PlatformTransactionManager transactionManager;
     private final NewsRepository newsRepository;
-    private final NewsFetchService newsFetchService;
+    private final KeywordRepository keywordRepository;
     private final MyJobListener myJobListener;
 
     @Bean
@@ -53,7 +57,7 @@ public class NewsBatchConfig {
     @Bean
     public Step newsStep() {
         return new StepBuilder("newsStep", jobRepository)
-                .<NewsApiItem, News>chunk(CHUNK_SIZE, transactionManager)
+                .<EventApiItem, News>chunk(CHUNK_SIZE, transactionManager)
                 .reader(newsReader())
                 .processor(newsProcessor())
                 .writer(newsWriter())
@@ -62,58 +66,51 @@ public class NewsBatchConfig {
 
     @Bean
     @StepScope
-    public ItemReader<NewsApiItem> newsReader() {
+    public ItemReader<EventApiItem> newsReader() {
         return new ItemReader<>() {
 
             private int currentPage = 1;
-            private Iterator<NewsApiItem> itemIterator = Collections.emptyIterator();
+            private Iterator<EventApiItem> itemIterator = Collections.emptyIterator();
             private boolean isEnd = false;
 
             @Override
-            public NewsApiItem read() {
+            public EventApiItem read() {
 
                 if (itemIterator.hasNext()) {
                     return itemIterator.next();
                 }
 
-                if (isEnd) {
-                    log.info(">>>> [Batch Reader] Completed collecting news data.");
-                    return null;
-                }
-
-                // 테스트/개발용 강제 종료 조건
-                // 여기서 return null 하면 Step이 정상 종료됨
-                if (currentPage > MAX_TEST_PAGES) {
-                    log.info(">>>> [Batch Reader] Test page limit reached. maxPages={}, estimatedMaxArticles={}",
-                            MAX_TEST_PAGES, MAX_TEST_PAGES * 100);
-                    isEnd = true;
+                if (isEnd || currentPage > MAX_TEST_PAGES) {
+                    log.info(">>>> [Batch Reader] Finished or reached max test pages.");
                     return null;
                 }
 
                 LocalDate targetDate = LocalDate.now().minusDays(1);
 
-                NewsApiResponse response = newsFetchService.fetchNews(targetDate, currentPage, null);
+                EventApiResponse response = newsFetchService.fetchEvents(targetDate, currentPage);
 
                 if (response == null
-                        || response.getArticles() == null
-                        || response.getArticles().getResults() == null
-                        || response.getArticles().getResults().isEmpty()) {
+                        || response.getEvents() == null
+                        || response.getEvents().getResults() == null
+                        || response.getEvents().getResults().isEmpty()) {
 
                     log.warn(">>>> [Batch Reader] API response is empty. date: {}, page: {}",
                             targetDate, currentPage);
-
                     isEnd = true;
                     return null;
                 }
 
-                List<NewsApiItem> results = response.getArticles().getResults();
+                List<EventApiItem> results = response.getEvents().getResults();
                 itemIterator = results.iterator();
 
-                int totalPages = response.getArticles().getPages();
+                int totalPages = response.getEvents().getPages() > 0
+                        ? response.getEvents().getPages()
+                        : currentPage;
+
                 int effectiveTotalPages = Math.min(totalPages, MAX_TEST_PAGES);
 
-                log.info(">>>> [Batch Reader] Fetching API page: {} / {} (apiTotalPages={}, testMaxPages={}, articles={})",
-                        currentPage, effectiveTotalPages, totalPages, MAX_TEST_PAGES, results.size());
+                log.info(">>>> [Batch Reader] Fetching Event page: {} / {} (total={}, items={})",
+                        currentPage, effectiveTotalPages, totalPages, results.size());
 
                 if (currentPage >= effectiveTotalPages) {
                     isEnd = true;
@@ -128,8 +125,60 @@ public class NewsBatchConfig {
 
     @Bean
     @StepScope
-    public ItemProcessor<NewsApiItem, News> newsProcessor() {
-        return NewsApiItem::toEntity;
+    public ItemProcessor<EventApiItem, News> newsProcessor() {
+        return eventItem -> {
+            if (eventItem == null) {
+                return null;
+            }
+
+            String articleUri = extractArticleUri(eventItem);
+
+            if (articleUri == null || articleUri.isBlank()) {
+                log.warn(">>>> [Batch Processor] Skip event. infoArticle.uri is empty. eventUri={}",
+                        eventItem.getUri());
+                return null;
+            }
+
+            NewsApiItem articleItem;
+
+            if (newsRepository.existsByUri(articleUri)) {
+                log.info(">>>> [Batch Processor] Skip existing article. articleUri={}", articleUri);
+                return null;
+            }
+
+            try {
+                articleItem = newsFetchService.fetchArticle(articleUri);
+            } catch (Exception e) {
+                log.warn(">>>> [Batch Processor] Skip event. Failed to fetch article body. eventUri={}, articleUri={}, reason={}",
+                        eventItem.getUri(), articleUri, e.getMessage());
+                return null;
+            }
+
+            if (articleItem == null || articleItem.getBody() == null || articleItem.getBody().isBlank()) {
+                log.warn(">>>> [Batch Processor] Skip event. Article body is empty. eventUri={}, articleUri={}",
+                        eventItem.getUri(), articleUri);
+                return null;
+            }
+
+            News news = createNewsFromEventAndArticle(eventItem, articleItem);
+
+            if (eventItem.getConcepts() != null) {
+                eventItem.getConcepts().stream()
+                        .filter(this::isValidConcept)
+                        .filter(concept -> concept.getScore() >= 70)
+                        .forEach(concept -> {
+                            String word = extractConceptWord(concept);
+                            String normalized = word.toLowerCase().trim();
+
+                            Keyword keyword = keywordRepository.findByNormalizedWord(normalized)
+                                    .orElseGet(() -> keywordRepository.findByAlias(normalized)
+                                            .orElseGet(() -> keywordRepository.save(Keyword.create(word))));
+
+                            news.addKeyword(keyword, (double) concept.getScore());
+                        });
+            }
+            return news;
+        };
     }
 
     @Bean
@@ -159,11 +208,96 @@ public class NewsBatchConfig {
                 newsRepository.saveAll(toSave);
             }
 
-            log.info(">>>> [Batch Writer] fetched={} | distinct={} | saved={} | skipped={}",
-                    items.size(),
-                    distinctItems.size(),
-                    toSave.size(),
-                    items.size() - toSave.size());
+            log.info(">>>> [Batch Writer] processed={} | saved={} | skipped={}",
+                    items.size(), toSave.size(), items.size() - toSave.size());
         };
+    }
+
+    private String extractArticleUri(EventApiItem eventItem) {
+        if (eventItem.getInfoArticle() == null) {
+            return null;
+        }
+
+        if (eventItem.getInfoArticle().getKor() != null
+                && eventItem.getInfoArticle().getKor().getUri() != null
+                && !eventItem.getInfoArticle().getKor().getUri().isBlank()) {
+            return eventItem.getInfoArticle().getKor().getUri();
+        }
+
+        if (eventItem.getInfoArticle().getEng() != null
+                && eventItem.getInfoArticle().getEng().getUri() != null
+                && !eventItem.getInfoArticle().getEng().getUri().isBlank()) {
+            return eventItem.getInfoArticle().getEng().getUri();
+        }
+
+        return null;
+    }
+
+    private News createNewsFromEventAndArticle(EventApiItem eventItem, NewsApiItem articleItem) {
+        return News.create(
+                articleItem.getUri(),
+                resolveTitle(eventItem, articleItem),
+                articleItem.getBody(),
+                articleItem.getUrl(),
+                articleItem.getLang(),
+                resolveSentiment(eventItem),
+                parseDateTimePub(articleItem.getDateTimePub())
+        );
+    }
+
+    private String resolveTitle(EventApiItem eventItem, NewsApiItem articleItem) {
+        if (articleItem.getTitle() != null && !articleItem.getTitle().isBlank()) {
+            return articleItem.getTitle();
+        }
+
+        if (eventItem.getTitle() != null) {
+            if (eventItem.getTitle().getKor() != null && !eventItem.getTitle().getKor().isBlank()) {
+                return eventItem.getTitle().getKor();
+            }
+
+            if (eventItem.getTitle().getEng() != null && !eventItem.getTitle().getEng().isBlank()) {
+                return eventItem.getTitle().getEng();
+            }
+        }
+
+        return "Untitled News";
+    }
+
+    private Double resolveSentiment(EventApiItem eventItem) {
+        return eventItem.getSentiment();
+    }
+
+    private LocalDateTime parseDateTimePub(String dateTimePub) {
+        if (dateTimePub == null || dateTimePub.isBlank()) {
+            return LocalDateTime.now();
+        }
+
+        try {
+            return OffsetDateTime.parse(dateTimePub).toLocalDateTime();
+        } catch (Exception e) {
+            log.warn(">>>> [Batch Processor] Failed to parse dateTimePub: {}", dateTimePub);
+            return LocalDateTime.now();
+        }
+    }
+
+    private boolean isValidConcept(Concept concept) {
+        String word = extractConceptWord(concept);
+        return word != null && !word.isBlank();
+    }
+
+    private String extractConceptWord(Concept concept) {
+        if (concept == null || concept.getLabel() == null) {
+            return null;
+        }
+
+        if (concept.getLabel().getKor() != null && !concept.getLabel().getKor().isBlank()) {
+            return concept.getLabel().getKor();
+        }
+
+        if (concept.getLabel().getEng() != null && !concept.getLabel().getEng().isBlank()) {
+            return concept.getLabel().getEng();
+        }
+
+        return null;
     }
 }

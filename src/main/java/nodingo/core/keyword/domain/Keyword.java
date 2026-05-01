@@ -24,6 +24,8 @@ import java.util.List;
 )
 public class Keyword extends BaseTimeEntity {
 
+    private static final int EMBEDDING_DIMENSION = 1536;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -57,6 +59,7 @@ public class Keyword extends BaseTimeEntity {
         Keyword keyword = new Keyword();
         keyword.word = word;
         keyword.normalizedWord = normalize(word);
+        keyword.embedding = emptyEmbedding();
         keyword.persona = persona;
         keyword.level = level;
         keyword.parent = parent;
@@ -68,13 +71,14 @@ public class Keyword extends BaseTimeEntity {
         Keyword keyword = new Keyword();
         keyword.word = word;
         keyword.normalizedWord = normalize(word);
+        keyword.embedding = emptyEmbedding();
         keyword.level = InterestLevel.SPECIFIC;
         keyword.addAlias(word);
         return keyword;
     }
 
     public void updateEmbedding(float[] embedding) {
-        this.embedding = embedding;
+        this.embedding = embedding != null ? embedding : emptyEmbedding();
     }
 
     public void addAlias(String alias) {
@@ -84,5 +88,9 @@ public class Keyword extends BaseTimeEntity {
 
     private static String normalize(String input) {
         return input.toLowerCase().trim();
+    }
+
+    private static float[] emptyEmbedding() {
+        return new float[EMBEDDING_DIMENSION];
     }
 }

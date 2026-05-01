@@ -7,11 +7,9 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class NewsApiItem {
+public class Concept {
     private String uri;
-    private String lang;
-    private String url;
-    private String title;
-    private String body;
-    private String dateTimePub;
+    private String type;
+    private int score;
+    private ConceptLabel label;
 }

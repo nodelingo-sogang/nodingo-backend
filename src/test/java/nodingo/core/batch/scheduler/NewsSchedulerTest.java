@@ -1,6 +1,5 @@
 package nodingo.core.batch.scheduler;
 
-import nodingo.core.batch.scheduler.NewsScheduler;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -10,6 +9,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.launch.JobLauncher;
+
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -29,15 +29,19 @@ class NewsSchedulerTest {
 
     @Test
     void schedulerShouldPassCorrectJobParameters() throws Exception {
+        // given
+        ArgumentCaptor<JobParameters> captor = ArgumentCaptor.forClass(JobParameters.class);
 
-        ArgumentCaptor<JobParameters> captor =
-                ArgumentCaptor.forClass(JobParameters.class);
-
+        // when
         newsScheduler.runDailyNewsJob();
 
+        // then
         verify(jobLauncher).run(eq(dailyNewsJob), captor.capture());
 
         JobParameters params = captor.getValue();
-        assertThat(params.getParameters()).containsKey("requestDate");
+
+        assertThat(params.getParameters()).containsKey("requestTime");
+        assertThat(params.getParameters()).containsKey("runId");
+        assertThat(params.getParameters()).doesNotContainKey("unused");
     }
 }
