@@ -1,4 +1,4 @@
-package nodingo.core.batch.dto;
+package nodingo.core.batch.dto.event;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -9,7 +9,6 @@ import nodingo.core.news.domain.News;
 
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
-import java.time.format.DateTimeFormatter;
 
 import java.util.List;
 

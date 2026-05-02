@@ -1,6 +1,6 @@
 package nodingo.core.global.config.news;
 
-import nodingo.core.batch.dto.*;
+import nodingo.core.batch.dto.event.*;
 import nodingo.core.batch.service.NewsFetchService;
 import nodingo.core.keyword.domain.Keyword;
 import nodingo.core.keyword.repository.KeywordRepository;
@@ -12,7 +12,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.batch.item.ItemProcessor;
 import org.springframework.batch.item.ItemReader;

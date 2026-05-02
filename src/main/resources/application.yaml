@@ -5,6 +5,9 @@ spring:
   config:
     import: optional:file:.env[.properties]
 
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+
   ai:
     openai:
       api-key: ${OPENAI_API_KEY}
@@ -77,6 +80,10 @@ springdoc:
     operations-sorter: alpha
     persistAuthorization: true
   override-with-generic-response: false
+
+ai:
+  server:
+    url: http://localhost:8000
 
 news:
   api:

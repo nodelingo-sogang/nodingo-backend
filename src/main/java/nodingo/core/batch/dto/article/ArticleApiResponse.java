@@ -2,7 +2,7 @@ package nodingo.core.batch.dto.article;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import nodingo.core.batch.dto.NewsApiItem;
+import nodingo.core.batch.dto.event.NewsApiItem;
 
 
 @Getter

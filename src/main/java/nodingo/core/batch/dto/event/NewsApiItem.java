@@ -1,4 +1,4 @@
-package nodingo.core.batch.dto;
+package nodingo.core.batch.dto.event;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Getter;

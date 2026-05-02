@@ -1,10 +1,9 @@
 package nodingo.core.batch.integration;
 
 import lombok.extern.slf4j.Slf4j;
-import nodingo.core.batch.dto.*;
+import nodingo.core.batch.dto.event.*;
 import nodingo.core.batch.service.NewsFetchService;
 import nodingo.core.keyword.repository.KeywordRepository;
-import nodingo.core.news.domain.News;
 import nodingo.core.news.repository.NewsRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
