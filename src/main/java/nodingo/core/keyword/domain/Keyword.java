@@ -24,7 +24,7 @@ import java.util.List;
 )
 public class Keyword extends BaseTimeEntity {
 
-    private static final int EMBEDDING_DIMENSION = 1536;
+    private static final int EMBEDDING_DIMENSION = 1024;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -37,7 +37,7 @@ public class Keyword extends BaseTimeEntity {
     private String normalizedWord;
 
     @JdbcTypeCode(SqlTypes.VECTOR)
-    @Column(columnDefinition = "vector(1536)")
+    @Column(columnDefinition = "vector(1024)")
     private float[] embedding;
 
     @Enumerated(EnumType.STRING)

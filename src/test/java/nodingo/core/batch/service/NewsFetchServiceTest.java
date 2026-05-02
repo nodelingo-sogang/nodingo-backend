@@ -1,10 +1,10 @@
 package nodingo.core.batch.service;
 
 import lombok.extern.slf4j.Slf4j;
-import nodingo.core.batch.dto.Concept;
-import nodingo.core.batch.dto.EventApiItem;
-import nodingo.core.batch.dto.EventApiResponse;
-import nodingo.core.batch.dto.NewsApiItem;
+import nodingo.core.batch.dto.event.Concept;
+import nodingo.core.batch.dto.event.EventApiItem;
+import nodingo.core.batch.dto.event.EventApiResponse;
+import nodingo.core.batch.dto.event.NewsApiItem;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

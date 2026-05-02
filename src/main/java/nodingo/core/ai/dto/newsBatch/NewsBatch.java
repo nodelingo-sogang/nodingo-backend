@@ -1,0 +1,72 @@
+package nodingo.core.ai.dto.newsBatch;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+import java.util.List;
+
+public class NewsBatch {
+
+    @Getter @Builder
+    @NoArgsConstructor @AllArgsConstructor
+    public static class Request {
+        private List<NewsInput> news;
+        private List<ExistingKeywordInput> existingKeywords;
+        private int topKKeywords;
+    }
+
+    @Getter
+    @NoArgsConstructor @AllArgsConstructor
+    public static class Response {
+        private List<NewsAnalysisResult> newsResults;
+        private List<KeywordRelationResult> keywordRelations;
+    }
+
+    @Getter @Builder
+    @NoArgsConstructor @AllArgsConstructor
+    public static class NewsInput {
+        private Long newsId;
+        private String title;
+        private String body;
+    }
+
+    @Getter @Builder
+    @NoArgsConstructor @AllArgsConstructor
+    public static class ExistingKeywordInput {
+        private Long keywordId;
+        private String word;
+        private String normalizedWord;
+        private float[] embedding;
+    }
+
+    @Getter
+    @NoArgsConstructor @AllArgsConstructor
+    public static class NewsAnalysisResult {
+        private Long newsId;
+        private float[] embedding;
+        private List<KeywordAiResult> keywords;
+    }
+
+    @Getter
+    @NoArgsConstructor @AllArgsConstructor
+    public static class KeywordAiResult {
+        private Long keywordId;
+        private String word;
+        private String normalizedWord;
+        private float[] embedding;
+        private double weight;
+        private boolean isNew;
+        private List<String> aliases;
+    }
+
+    @Getter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class KeywordRelationResult {
+        private Long sourceKeywordId;
+        private Long targetKeywordId;
+        private double relationScore;
+    }
+}

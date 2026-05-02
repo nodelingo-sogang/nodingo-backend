@@ -1,14 +1,13 @@
-package nodingo.core.batch.dto;
+package nodingo.core.batch.dto.event;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Getter
 @NoArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class EventApiResponse {
-    @JsonProperty("events")
-    private EventWrapper events;
+public class EventTitle {
+    private String eng;
+    private String kor;
 }
