@@ -25,10 +25,10 @@ class NewsFetchServiceTest {
     private NewsFetchService newsFetchService;
 
     @Test
-    @DisplayName("Event Registry - getEvents로 keyword 확보 후 article API로 본문 조회 테스트")
+    @DisplayName("Event Registry - event의 infoArticle uri로 article 본문을 재조회할 수 있다")
     void fetchEventsTest() {
         // given
-        LocalDate targetDate = LocalDate.now();
+        LocalDate targetDate = LocalDate.now().minusDays(1);
         int page = 1;
 
         // when
@@ -47,11 +47,9 @@ class NewsFetchServiceTest {
 
         EventApiItem event = results.stream()
                 .filter(e -> getRepresentativeArticle(e) != null)
-                .filter(e -> getRepresentativeArticle(e).getUri() != null)
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("infoArticle.uri가 있는 event를 찾지 못함"));
 
-        // keyword 검증
         assertThat(event.getConcepts())
                 .as("event.concepts는 keyword 저장용이므로 필수")
                 .isNotNull()
@@ -64,7 +62,6 @@ class NewsFetchServiceTest {
                 .as("concept.label.kor 또는 concept.label.eng가 있어야 keyword 저장 가능")
                 .isNotBlank();
 
-        // article uri 확보
         NewsApiItem infoArticle = getRepresentativeArticle(event);
 
         assertThat(infoArticle).isNotNull();
@@ -101,12 +98,14 @@ class NewsFetchServiceTest {
             return null;
         }
 
-        if (event.getInfoArticle().getKor() != null) {
-            return event.getInfoArticle().getKor();
+        NewsApiItem kor = event.getInfoArticle().getKor();
+        if (kor != null && kor.getUri() != null && !kor.getUri().isBlank()) {
+            return kor;
         }
 
-        if (event.getInfoArticle().getEng() != null) {
-            return event.getInfoArticle().getEng();
+        NewsApiItem eng = event.getInfoArticle().getEng();
+        if (eng != null && eng.getUri() != null && !eng.getUri().isBlank()) {
+            return eng;
         }
 
         return null;

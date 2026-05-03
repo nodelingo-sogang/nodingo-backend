@@ -1,9 +1,13 @@
 package nodingo.core.batch.integration;
 
 import lombok.extern.slf4j.Slf4j;
+import nodingo.core.ai.client.AiClient;
+import nodingo.core.ai.dto.newsBatch.NewsBatch;
 import nodingo.core.batch.dto.event.*;
 import nodingo.core.batch.service.NewsFetchService;
+import nodingo.core.global.util.NewsSummarizer;
 import nodingo.core.keyword.repository.KeywordRepository;
+import nodingo.core.news.domain.News;
 import nodingo.core.news.repository.NewsRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,6 +47,8 @@ import static org.mockito.BDDMockito.given;
 )
 class NewsBatchIntegrationTest {
 
+    private static final int EMBEDDING_DIMENSION = 1024;
+
     @Autowired
     private JobLauncherTestUtils jobLauncherTestUtils;
 
@@ -52,6 +58,12 @@ class NewsBatchIntegrationTest {
 
     @MockitoBean
     private NewsFetchService newsFetchService;
+
+    @MockitoBean
+    private AiClient aiClient;
+
+    @MockitoBean
+    private NewsSummarizer newsSummarizer;
 
     @Autowired
     private NewsRepository newsRepository;
@@ -95,6 +107,34 @@ class NewsBatchIntegrationTest {
         given(newsFetchService.fetchArticle(eq("article-uri-1")))
                 .willReturn(fullArticle);
 
+        given(aiClient.analyzeNewsBatch(any(NewsBatch.Request.class)))
+                .willAnswer(invocation -> {
+                    NewsBatch.Request request = invocation.getArgument(0);
+
+                    Long newsId = request.getNews().get(0).getNewsId();
+
+                    NewsBatch.KeywordAiResult keywordResult = NewsBatch.KeywordAiResult.builder()
+                            .keywordId(null)
+                            .word("인공지능")
+                            .weight(0.9)
+                            .isNew(true)
+                            .embedding(mockEmbedding())
+                            .build();
+
+                    NewsBatch.NewsAnalysisResult newsResult = NewsBatch.NewsAnalysisResult.builder()
+                            .newsId(newsId)
+                            .embedding(mockEmbedding())
+                            .keywords(List.of(keywordResult))
+                            .build();
+
+                    return NewsBatch.Response.builder()
+                            .newsResults(List.of(newsResult))
+                            .build();
+                });
+
+        given(newsSummarizer.summarize(any(News.class)))
+                .willReturn("AI가 생성한 200자 요약 본문입니다.");
+
         JobParameters jobParameters = new JobParametersBuilder()
                 .addLocalDateTime("requestTime", LocalDateTime.now())
                 .addString("runId", UUID.randomUUID().toString())
@@ -107,28 +147,38 @@ class NewsBatchIntegrationTest {
         assertThat(jobExecution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
 
         assertThat(newsRepository.count()).isEqualTo(1);
-        assertThat(keywordRepository.count()).isEqualTo(1);
+        assertThat(keywordRepository.count()).isEqualTo(2);
+
+        List<String> keywords = jdbcTemplate.queryForList("""
+        SELECT word
+        FROM keywords
+        """, String.class);
+
+        assertThat(keywords).contains("테슬라", "인공지능");
 
         Map<String, Object> savedNews = jdbcTemplate.queryForMap("""
-        SELECT uri, title, body, url, lang
-        FROM news
-        WHERE uri = ?
-        """, "article-uri-1");
+            SELECT uri, title, body, url, lang
+            FROM news
+            WHERE uri = ?
+            """, "article-uri-1");
 
         assertThat(savedNews.get("uri")).isEqualTo("article-uri-1");
         assertThat(savedNews.get("title")).isEqualTo("Full Article Title");
-        assertThat((String) savedNews.get("body")).contains("full article body");
+
+        // NewsSummarizer mock 결과가 저장되는 구조이므로 요약문 기준으로 검증
+        assertThat(savedNews.get("body")).isEqualTo("AI가 생성한 200자 요약 본문입니다.");
+
         assertThat(savedNews.get("url")).isEqualTo("https://news.com/article-uri-1");
         assertThat(savedNews.get("lang")).isEqualTo("kor");
 
         Integer newsKeywordCount = jdbcTemplate.queryForObject("""
-        SELECT COUNT(*)
-        FROM news_keywords nk
-        JOIN news n ON nk.news_id = n.id
-        WHERE n.uri = ?
-        """, Integer.class, "article-uri-1");
+            SELECT COUNT(*)
+            FROM news_keywords nk
+            JOIN news n ON nk.news_id = n.id
+            WHERE n.uri = ?
+            """, Integer.class, "article-uri-1");
 
-        assertThat(newsKeywordCount).isEqualTo(1);
+        assertThat(newsKeywordCount).isEqualTo(2);
 
         log.info(">>>> Saved News URI: {}", savedNews.get("uri"));
         log.info(">>>> Saved News Title: {}", savedNews.get("title"));
@@ -183,6 +233,14 @@ class NewsBatchIntegrationTest {
         setField(articleItem, "body", "This is the full article body content. This body should be saved into news table.");
 
         return articleItem;
+    }
+
+    private float[] mockEmbedding() {
+        float[] embedding = new float[EMBEDDING_DIMENSION];
+        embedding[0] = 0.1f;
+        embedding[1] = 0.2f;
+        embedding[2] = 0.3f;
+        return embedding;
     }
 
     private void setField(Object target, String fieldName, Object value) {

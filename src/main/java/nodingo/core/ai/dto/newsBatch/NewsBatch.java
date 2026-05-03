@@ -18,10 +18,12 @@ public class NewsBatch {
     }
 
     @Getter
+    @Builder
     @NoArgsConstructor @AllArgsConstructor
     public static class Response {
         private List<NewsAnalysisResult> newsResults;
         private List<KeywordRelationResult> keywordRelations;
+
     }
 
     @Getter @Builder
@@ -42,14 +44,17 @@ public class NewsBatch {
     }
 
     @Getter
+    @Builder
     @NoArgsConstructor @AllArgsConstructor
     public static class NewsAnalysisResult {
         private Long newsId;
         private float[] embedding;
         private List<KeywordAiResult> keywords;
+
     }
 
     @Getter
+    @Builder
     @NoArgsConstructor @AllArgsConstructor
     public static class KeywordAiResult {
         private Long keywordId;
@@ -59,6 +64,7 @@ public class NewsBatch {
         private double weight;
         private boolean isNew;
         private List<String> aliases;
+
     }
 
     @Getter

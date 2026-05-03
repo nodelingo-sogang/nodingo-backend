@@ -1,6 +1,6 @@
 plugins {
 	id 'java'
-	id 'org.springframework.boot' version '3.5.13'
+	id 'org.springframework.boot' version '3.4.5'
 	id 'io.spring.dependency-management' version '1.1.7'
 }
 
@@ -20,6 +20,7 @@ repositories {
 
 ext {
 	set('springAiVersion', "1.1.4")
+	set('springCloudVersion', "2024.0.2")
 }
 
 dependencies {
@@ -31,14 +32,13 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework.boot:spring-boot-starter-webflux'
-	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.16'
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.14'
 	implementation 'org.springframework.ai:spring-ai-advisors-vector-store'
 	implementation 'org.springframework.ai:spring-ai-starter-model-openai'
 	implementation 'org.springframework.ai:spring-ai-starter-vector-store-pgvector'
 	implementation 'org.springframework.ai:spring-ai-pdf-document-reader'
 	implementation 'org.springframework.ai:spring-ai-tika-document-reader'
 	implementation 'org.springframework.ai:spring-ai-jsoup-document-reader'
-	implementation 'org.springframework.ai:spring-ai-advisors-vector-store'
 	implementation 'org.springframework.ai:spring-ai-rag'
 	implementation 'org.jsoup:jsoup:1.17.2'
     implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
@@ -69,6 +69,6 @@ tasks.named('test') {
 dependencyManagement {
 	imports {
 		mavenBom "org.springframework.ai:spring-ai-bom:${springAiVersion}"
-		mavenBom "org.springframework.cloud:spring-cloud-dependencies:2024.0.1"
+		mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
 	}
 }

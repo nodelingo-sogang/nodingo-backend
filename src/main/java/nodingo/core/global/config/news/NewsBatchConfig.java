@@ -3,12 +3,15 @@ package nodingo.core.global.config.news;
 import java.time.OffsetDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import nodingo.core.ai.client.AiClient;
+import nodingo.core.ai.dto.newsBatch.NewsBatch;
 import nodingo.core.batch.dto.event.Concept;
 import nodingo.core.batch.dto.event.EventApiItem;
 import nodingo.core.batch.dto.event.EventApiResponse;
 import nodingo.core.batch.dto.event.NewsApiItem;
 import nodingo.core.batch.listener.MyJobListener;
 import nodingo.core.batch.service.NewsFetchService;
+import nodingo.core.global.util.NewsSummarizer;
 import nodingo.core.keyword.domain.Keyword;
 import nodingo.core.keyword.repository.KeywordRepository;
 import nodingo.core.news.domain.News;
@@ -29,7 +32,6 @@ import org.springframework.transaction.PlatformTransactionManager;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Configuration
@@ -37,7 +39,8 @@ import java.util.stream.Collectors;
 public class NewsBatchConfig {
 
     private static final int CHUNK_SIZE = 20;
-    private static final int MAX_TEST_PAGES = 20; // Get Events는 페이지당 50개니 최대 500개
+    private static final int MAX_TEST_PAGES = 20;
+    private static final int topKKeywords=8;
 
     private final NewsFetchService newsFetchService;
     private final JobRepository jobRepository;
@@ -45,6 +48,8 @@ public class NewsBatchConfig {
     private final NewsRepository newsRepository;
     private final KeywordRepository keywordRepository;
     private final MyJobListener myJobListener;
+    private final AiClient aiClient;
+    private final NewsSummarizer newsSummarizer;
 
     @Bean
     public Job dailyNewsJob() {
@@ -60,7 +65,7 @@ public class NewsBatchConfig {
                 .<EventApiItem, News>chunk(CHUNK_SIZE, transactionManager)
                 .reader(newsReader())
                 .processor(newsProcessor())
-                .writer(newsWriter())
+                .writer(newsAiWriter())
                 .build();
     }
 
@@ -182,34 +187,79 @@ public class NewsBatchConfig {
     }
 
     @Bean
-    public ItemWriter<News> newsWriter() {
+    public ItemWriter<News> newsAiWriter() {
         return items -> {
-            List<? extends News> chunkItems = items.getItems();
+            List<News> chunkItems = new ArrayList<>(items.getItems());
 
-            List<News> distinctItems = new ArrayList<>(chunkItems.stream()
-                    .collect(Collectors.toMap(
-                            News::getUri,
-                            news -> news,
-                            (existing, replacement) -> existing
-                    ))
-                    .values());
+            if (chunkItems.isEmpty()) return;
 
-            List<String> uris = distinctItems.stream()
-                    .map(News::getUri)
+            // 1. DB 저장 (ID 확보)
+            List<News> savedNews = newsRepository.saveAll(chunkItems);
+
+            // 2. 기존 키워드 조회
+            List<NewsBatch.ExistingKeywordInput> existingKeywords = keywordRepository.findAll().stream()
+                    .map(k -> NewsBatch.ExistingKeywordInput.builder()
+                            .keywordId(k.getId())
+                            .word(k.getWord())
+                            .normalizedWord(k.getNormalizedWord())
+                            .embedding(k.getEmbedding())
+                            .build())
                     .toList();
 
-            Set<String> existingUris = new HashSet<>(newsRepository.findExistingUris(uris));
+            // 3. AI 요청 생성
+            NewsBatch.Request request = NewsBatch.Request.builder()
+                    .news(savedNews.stream()
+                            .map(n -> NewsBatch.NewsInput.builder()
+                                    .newsId(n.getId())
+                                    .title(n.getTitle())
+                                    .body(n.getBody())
+                                    .build())
+                            .toList())
+                    .existingKeywords(existingKeywords)
+                    .topKKeywords(topKKeywords)
+                    .build();
 
-            List<News> toSave = distinctItems.stream()
-                    .filter(news -> !existingUris.contains(news.getUri()))
-                    .toList();
+            log.info(">>>> [AI logic start] news {}건 analysis request...", savedNews.size());
 
-            if (!toSave.isEmpty()) {
-                newsRepository.saveAll(toSave);
+            NewsBatch.Response aiResponse = aiClient.analyzeNewsBatch(request);
+
+            // 4. 결과 반영
+            for (NewsBatch.NewsAnalysisResult res : aiResponse.getNewsResults()) {
+                News news = savedNews.stream()
+                        .filter(n -> n.getId().equals(res.getNewsId()))
+                        .findFirst()
+                        .orElse(null);
+
+                if (news == null) continue;
+
+                // 임베딩 업데이트
+                news.updateEmbedding(res.getEmbedding());
+
+                // 뉴스 본문 200자로 요약
+                String summary = newsSummarizer.summarize(news);
+                news.updateBody(summary);
+
+                // 키워드 처리
+                for (NewsBatch.KeywordAiResult kwRes : res.getKeywords()) {
+                    Keyword keyword;
+
+                    if (kwRes.isNew()) {
+                        keyword = keywordRepository.save(Keyword.create(kwRes.getWord()));
+                        keyword.updateEmbedding(kwRes.getEmbedding());
+                        keyword = keywordRepository.save(keyword);
+                    } else {
+                        keyword = keywordRepository.findById(kwRes.getKeywordId())
+                                .orElseGet(() -> keywordRepository.save(Keyword.create(kwRes.getWord())));
+                    }
+
+                    news.addKeyword(keyword, kwRes.getWeight());
+                }
             }
 
-            log.info(">>>> [Batch Writer] processed={} | saved={} | skipped={}",
-                    items.size(), toSave.size(), items.size() - toSave.size());
+            // 5. 최종 저장
+            newsRepository.saveAll(savedNews);
+
+            log.info(">>>> [AI analysis finished] {} of news: finished embedding and keyword update", savedNews.size());
         };
     }
 

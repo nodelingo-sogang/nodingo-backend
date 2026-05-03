@@ -1,7 +1,10 @@
 package nodingo.core.global.config.news;
 
+import nodingo.core.ai.client.AiClient;
+import nodingo.core.ai.dto.newsBatch.NewsBatch;
 import nodingo.core.batch.dto.event.*;
 import nodingo.core.batch.service.NewsFetchService;
+import nodingo.core.global.util.NewsSummarizer;
 import nodingo.core.keyword.domain.Keyword;
 import nodingo.core.keyword.repository.KeywordRepository;
 import nodingo.core.news.domain.News;
@@ -39,6 +42,12 @@ class NewsBatchConfigTest {
     @Mock
     private KeywordRepository keywordRepository;
 
+    @Mock
+    private AiClient aiClient;
+
+    @Mock
+    private NewsSummarizer newsSummarizer;
+
     private NewsBatchConfig config;
 
     @BeforeEach
@@ -49,7 +58,9 @@ class NewsBatchConfigTest {
                 null,
                 newsRepository,
                 keywordRepository,
-                null
+                null,
+                aiClient,
+                newsSummarizer
         );
     }
 
@@ -130,31 +141,74 @@ class NewsBatchConfigTest {
     }
 
     @Test
-    @DisplayName("Writer는 이미 존재하는 URI를 제외하고 새로운 뉴스만 저장한다")
-    void newsWriter() throws Exception {
+    @DisplayName("NewsAiWriter는 뉴스를 저장한 뒤 AI 분석 결과로 임베딩, 요약 본문, 키워드를 업데이트한다")
+    void newsAiWriter() throws Exception {
         // given
-        ItemWriter<News> writer = config.newsWriter();
+        ItemWriter<News> writer = config.newsAiWriter();
 
         LocalDateTime now = LocalDateTime.now();
-        News n1 = News.create("uri1", "t1", "b1", "https://news.com/1", "kor", 0.1, now);
-        News n2 = News.create("uri2", "t2", "b2", "https://news.com/2", "kor", 0.2, now);
+        News news = News.create(
+                "uri1",
+                "title1",
+                "original body",
+                "https://news.com/1",
+                "kor",
+                0.1,
+                now
+        );
 
-        given(newsRepository.findExistingUris(anyList()))
-                .willReturn(List.of("uri1"));
+        // DB 저장 후 ID가 있다고 가정해야 AI 응답의 newsId와 매칭 가능
+        setField(news, "id", 1L);
 
-        Chunk<News> chunk = new Chunk<>(List.of(n1, n2));
+        Keyword existingKeyword = Keyword.create("AI");
+        setField(existingKeyword, "id", 10L);
+
+        given(newsRepository.saveAll(anyList()))
+                .willAnswer(invocation -> invocation.getArgument(0));
+
+        given(keywordRepository.findAll())
+                .willReturn(List.of(existingKeyword));
+
+        NewsBatch.KeywordAiResult keywordResult = NewsBatch.KeywordAiResult.builder()
+                .keywordId(10L)
+                .word("AI")
+                .weight(0.9)
+                .isNew(false)
+                .build();
+
+        NewsBatch.NewsAnalysisResult newsResult = NewsBatch.NewsAnalysisResult.builder()
+                .newsId(1L)
+                .embedding(new float[]{0.1f, 0.2f, 0.3f})
+                .keywords(List.of(keywordResult))
+                .build();
+
+        NewsBatch.Response aiResponse = NewsBatch.Response.builder()
+                .newsResults(List.of(newsResult))
+                .build();
+
+        given(aiClient.analyzeNewsBatch(any(NewsBatch.Request.class)))
+                .willReturn(aiResponse);
+
+        given(newsSummarizer.summarize(news))
+                .willReturn("200자 요약 본문입니다.");
+
+        given(keywordRepository.findById(10L))
+                .willReturn(Optional.of(existingKeyword));
+
+        Chunk<News> chunk = new Chunk<>(List.of(news));
 
         // when
         writer.write(chunk);
 
         // then
-        verify(newsRepository).saveAll(argThat(list -> {
-            List<News> savedList = new ArrayList<>();
-            list.forEach(savedList::add);
+        verify(newsRepository, times(2)).saveAll(anyList());
+        verify(keywordRepository).findAll();
+        verify(aiClient).analyzeNewsBatch(any(NewsBatch.Request.class));
+        verify(newsSummarizer).summarize(news);
+        verify(keywordRepository).findById(10L);
 
-            return savedList.size() == 1
-                    && savedList.get(0).getUri().equals("uri2");
-        }));
+        assertThat(news.getBody()).isEqualTo("200자 요약 본문입니다.");
+        assertThat(news.getNewsKeywords()).isNotEmpty();
     }
 
     private EventApiItem createMockEvent(String eventUri, String articleUri) {
