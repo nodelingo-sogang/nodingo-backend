@@ -1,4 +1,4 @@
-package nodingo.core.ai.dto.keywordRecommend;
+package nodingo.core.ai.dto.keyword;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
