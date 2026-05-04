@@ -4,6 +4,7 @@ import nodingo.core.ai.dto.graphPreview.GraphPreview;
 import nodingo.core.ai.dto.keyword.KeywordRecommend;
 import nodingo.core.ai.dto.keyword.KeywordSummary;
 import nodingo.core.ai.dto.newsBatch.NewsBatch;
+import nodingo.core.ai.dto.relation.NewsRelationAnalysis;
 import nodingo.core.ai.dto.userEmbedding.UserEmbedding;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,7 +26,7 @@ public interface AiClient {
      * 2. 뉴스 간의 관계 생성 (뉴스 상세 페이지나 추천용)
      */
     @PostMapping("/v1/news/build-news-relations")
-    Object buildNewsRelations(@RequestBody Object request); // 필요시 DTO 추가
+    NewsRelationAnalysis.Response buildNewsRelations(@RequestBody NewsRelationAnalysis.Request request);
 
     /**
      * 3. 유저 최초 온보딩 시 임베딩 초기화
