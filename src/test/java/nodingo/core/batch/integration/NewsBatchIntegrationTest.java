@@ -26,6 +26,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.context.jdbc.SqlConfig;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.lang.reflect.Field;
 import java.time.LocalDateTime;
@@ -80,6 +81,7 @@ class NewsBatchIntegrationTest {
 
         jdbcTemplate.execute("""
             TRUNCATE TABLE
+                news_relations,   
                 news_keywords,
                 keyword_alias,
                 keywords,
@@ -189,35 +191,35 @@ class NewsBatchIntegrationTest {
     private EventApiItem createMockEvent(String eventUri, String articleUri) {
         EventApiItem event = new EventApiItem();
 
-        setField(event, "uri", eventUri);
-        setField(event, "sentiment", 0.5);
+        ReflectionTestUtils.setField(event, "uri", eventUri);
+        ReflectionTestUtils.setField(event, "sentiment", 0.5);
 
         EventTitle title = new EventTitle();
-        setField(title, "kor", "테스트 이벤트 제목");
-        setField(title, "eng", "Test Event Title");
-        setField(event, "title", title);
+        ReflectionTestUtils.setField(title, "kor", "테스트 이벤트 제목");
+        ReflectionTestUtils.setField(title, "eng", "Test Event Title");
+        ReflectionTestUtils.setField(event, "title", title);
 
         Concept concept = new Concept();
-        setField(concept, "type", "org");
-        setField(concept, "score", 100);
+        ReflectionTestUtils.setField(concept, "type", "org");
+        ReflectionTestUtils.setField(concept, "score", 100);
 
         ConceptLabel label = new ConceptLabel();
-        setField(label, "kor", "테슬라");
-        setField(label, "eng", "Tesla");
-        setField(concept, "label", label);
+        ReflectionTestUtils.setField(label, "kor", "테슬라");
+        ReflectionTestUtils.setField(label, "eng", "Tesla");
+        ReflectionTestUtils.setField(concept, "label", label);
 
-        setField(event, "concepts", List.of(concept));
+        ReflectionTestUtils.setField(event, "concepts", List.of(concept));
 
         NewsApiItem infoArticle = new NewsApiItem();
-        setField(infoArticle, "uri", articleUri);
-        setField(infoArticle, "url", "https://news.com/" + articleUri);
-        setField(infoArticle, "lang", "kor");
+        ReflectionTestUtils.setField(infoArticle, "uri", articleUri);
+        ReflectionTestUtils.setField(infoArticle, "url", "https://news.com/" + articleUri);
+        ReflectionTestUtils.setField(infoArticle, "lang", "kor");
 
         InfoArticleWrapper articleWrapper = new InfoArticleWrapper();
-        setField(articleWrapper, "kor", infoArticle);
-        setField(articleWrapper, "eng", infoArticle);
+        ReflectionTestUtils.setField(articleWrapper, "kor", infoArticle);
+        ReflectionTestUtils.setField(articleWrapper, "eng", infoArticle);
 
-        setField(event, "infoArticle", articleWrapper);
+        ReflectionTestUtils.setField(event, "infoArticle", articleWrapper);
 
         return event;
     }
@@ -225,12 +227,12 @@ class NewsBatchIntegrationTest {
     private NewsApiItem createMockArticle(String articleUri) {
         NewsApiItem articleItem = new NewsApiItem();
 
-        setField(articleItem, "uri", articleUri);
-        setField(articleItem, "url", "https://news.com/" + articleUri);
-        setField(articleItem, "lang", "kor");
-        setField(articleItem, "dateTimePub", "2026-05-01T10:00:00Z");
-        setField(articleItem, "title", "Full Article Title");
-        setField(articleItem, "body", "This is the full article body content. This body should be saved into news table.");
+        ReflectionTestUtils.setField(articleItem, "uri", articleUri);
+        ReflectionTestUtils.setField(articleItem, "url", "https://news.com/" + articleUri);
+        ReflectionTestUtils.setField(articleItem, "lang", "kor");
+        ReflectionTestUtils.setField(articleItem, "dateTimePub", "2026-05-01T10:00:00Z");
+        ReflectionTestUtils.setField(articleItem, "title", "Full Article Title");
+        ReflectionTestUtils.setField(articleItem, "body", "This is the full article body content. This body should be saved into news table.");
 
         return articleItem;
     }
