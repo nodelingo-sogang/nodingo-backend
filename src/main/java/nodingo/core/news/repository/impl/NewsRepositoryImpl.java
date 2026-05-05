@@ -8,16 +8,20 @@ import nodingo.core.news.domain.News;
 import nodingo.core.news.dto.query.NewsResult;
 import nodingo.core.news.dto.query.QNewsResult;
 import nodingo.core.news.repository.custom.NewsRepositoryCustom;
+import nodingo.core.user.domain.UserScrap;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static nodingo.core.keyword.domain.QKeyword.keyword;
 import static nodingo.core.keyword.domain.QKeywordAlias.keywordAlias;
 import static nodingo.core.keyword.domain.QNewsKeyword.newsKeyword;
 import static nodingo.core.news.domain.QNews.news;
+import static nodingo.core.user.domain.QUser.user;
+import static nodingo.core.user.domain.QUserScrap.userScrap;
 
 @RequiredArgsConstructor
 public class NewsRepositoryImpl implements NewsRepositoryCustom {
@@ -106,5 +110,21 @@ public class NewsRepositoryImpl implements NewsRepositoryCustom {
                 .setParameter("newsId", newsId)
                 .setParameter("limit", limit)
                 .getResultList();
+    }
+
+    @Override
+    public Optional<UserScrap> findScrapDetail(Long userId, Long newsId) {
+        return Optional.ofNullable(
+                queryFactory.selectFrom(userScrap)
+                        .join(userScrap.user, user).fetchJoin()
+                        .join(userScrap.news, news).fetchJoin()
+                        .leftJoin(news.newsKeywords, newsKeyword).fetchJoin()
+                        .leftJoin(newsKeyword.keyword, keyword).fetchJoin()
+                        .where(
+                                user.id.eq(userId),
+                                news.id.eq(newsId)
+                        )
+                        .fetchOne()
+        );
     }
 }

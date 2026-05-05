@@ -8,6 +8,8 @@ import nodingo.core.global.exception.keyword.KeywordNotFoundException;
 import nodingo.core.global.exception.news.NewsIllegalException;
 import nodingo.core.global.exception.news.NewsNotFoundException;
 import nodingo.core.global.exception.user.UserNotFoundException;
+import nodingo.core.global.exception.userScrap.DuplicateScrapException;
+import nodingo.core.global.exception.userScrap.UserScrapNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -61,10 +63,21 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.NOT_FOUND, e.getMessage());
     }
 
+    //UserScrapNotFoundException
+    @ExceptionHandler(UserScrapNotFoundException.class)
+    protected ResponseEntity<ApiResponse<?>> handleUserScrapNotFoundException(UserScrapNotFoundException e) {
+        return buildErrorResponse(HttpStatus.NOT_FOUND, e.getMessage());
+    }
+
     //NewsIllegalException
     @ExceptionHandler(NewsIllegalException.class)
     protected ResponseEntity<ApiResponse<?>> handleNewsIllegalException(NewsIllegalException e) {
         return buildErrorResponse(HttpStatus.BAD_REQUEST, e.getMessage());
+    }
+
+    @ExceptionHandler(DuplicateScrapException.class)
+    protected ResponseEntity<ApiResponse<?>> handleDuplicateScrapException(DuplicateScrapException e){
+        return buildErrorResponse(HttpStatus.CONFLICT, e.getMessage());
     }
 
     @ExceptionHandler(AiIntegrationException.class)

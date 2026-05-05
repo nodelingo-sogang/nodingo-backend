@@ -6,6 +6,7 @@ import nodingo.core.user.domain.InterestLevel;
 import nodingo.core.user.domain.UserPersona;
 import nodingo.core.user.dto.result.KeywordListResult;
 import nodingo.core.user.dto.result.PersonaListResult;
+import nodingo.core.user.service.query.OnboardingQueryService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
