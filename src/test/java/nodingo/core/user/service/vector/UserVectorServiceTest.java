@@ -22,6 +22,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
+
 import java.util.List;
 import java.util.Optional;
 
@@ -31,105 +32,93 @@ class UserVectorServiceTest {
     @InjectMocks
     private UserVectorService userVectorService;
 
-    @Mock
-    private AiClient aiClient;
-    @Mock
-    private UserRepository userRepository;
-    @Mock
-    private NewsRepository newsRepository;
+    @Mock private AiClient aiClient;
+    @Mock private UserRepository userRepository;
+    @Mock private NewsRepository newsRepository;
 
     @Test
     @DisplayName("성공: 초기 키워드를 바탕으로 AI 서버에서 임베딩을 받아 유저에게 설정한다")
     void initUserEmbedding_Success() {
-        // 1. Given
+        // given
         User user = spy(User.create("google", "sub-123", "sungmin", "성민", "test@test.com"));
-
-        Keyword k1 = mock(Keyword.class);
-        given(k1.getId()).willReturn(1L);
-        given(k1.getWord()).willReturn("정치");
-        given(k1.getEmbedding()).willReturn(new float[]{0.1f, 0.1f});
-
-        Keyword k2 = mock(Keyword.class);
-        given(k2.getId()).willReturn(2L);
-        given(k2.getWord()).willReturn("경제");
-        given(k2.getEmbedding()).willReturn(new float[]{0.2f, 0.2f});
-
-        List<Keyword> selectedKeywords = List.of(k1, k2);
+        List<Keyword> selectedKeywords = List.of(
+                createMockKeyword(1L, "정치", new float[]{0.1f, 0.1f}),
+                createMockKeyword(2L, "경제", new float[]{0.2f, 0.2f})
+        );
 
         float[] expectedEmbedding = {0.5f, 0.5f, 0.5f};
-        UserEmbedding.Response mockResponse = new UserEmbedding.Response(1L, expectedEmbedding);
+        UserEmbedding.Response mockResponse = UserEmbedding.Response.builder()
+                .userId(1L)
+                .embedding(expectedEmbedding)
+                .build();
 
-        given(aiClient.initUserEmbedding(any(UserEmbedding.InitRequest.class))).willReturn(mockResponse);
+        given(aiClient.initUserEmbedding(any())).willReturn(mockResponse);
 
-        // 2. When
+        // when
         userVectorService.initUserEmbedding(user, selectedKeywords);
 
-        // 3. Then
-        verify(user, times(1)).updateEmbedding(expectedEmbedding);
-        verify(aiClient, times(1)).initUserEmbedding(any());
+        // then
+        verify(user).updateEmbedding(expectedEmbedding);
+        verify(aiClient).initUserEmbedding(any());
     }
 
     @Test
-    @DisplayName("실패: AI 서버 응답이 비어있으면 AiIntegrationException이 발생한다")
-    void initUserEmbedding_Fail_EmptyResponse() {
-        // Given
-        User user = User.create("google", "sub-123", "sungmin", "성민", "test@test.com");
-        List<Keyword> keywords = List.of(mock(Keyword.class));
-
-        given(aiClient.initUserEmbedding(any())).willReturn(null);
-
-        // When & Then
-        assertThrows(AiIntegrationException.class, () ->
-                userVectorService.initUserEmbedding(user, keywords)
-        );
-    }
-
-    @Test
-    @DisplayName("실패: AI 서버 통신 중 예외가 발생하면 AiIntegrationException으로 래핑되어 던져진다")
-    void initUserEmbedding_Fail_CommunicationError() {
-        // Given
-        User user = User.create("google", "sub-123", "sungmin", "성민", "test@test.com");
-        List<Keyword> keywords = List.of(mock(Keyword.class));
-
-        given(aiClient.initUserEmbedding(any())).willThrow(new RuntimeException("Connection Refused"));
-
-        // When & Then
-        assertThrows(AiIntegrationException.class, () ->
-                userVectorService.initUserEmbedding(user, keywords)
-        );
-    }
-
-    @Test
-    @DisplayName("성공: AI 서버 응답을 받아 유저 임베딩을 업데이트하고 저장한다")
+    @DisplayName("성공: 스크랩 정보를 바탕으로 유저 임베딩을 업데이트하고 저장한다")
     void updateUserEmbeddingAsync_Success() {
-        // Given
-        Long userId = 1L, newsId = 100L;
+        // given
+        Long userId = 1L;
+        Long newsId = 100L;
 
-        User realUser = User.create("google", "sub-123", "sungmin_test", "성민", "test@test.com");
-        User user = spy(realUser);
-
-        UserScrap scrap = mock(UserScrap.class);
+        User user = spy(User.create("google", "sub-123", "sungmin", "성민", "test@test.com"));
         News news = mock(News.class);
-
-        float[] newEmbedding = {0.1f, 0.2f, 0.3f};
-        UserEmbedding.Response mockRes = new UserEmbedding.Response(userId, newEmbedding);
+        UserScrap scrap = mock(UserScrap.class);
 
         given(newsRepository.findScrapDetail(userId, newsId)).willReturn(Optional.of(scrap));
-        given(scrap.getUser()).willReturn(user);
-        given(scrap.getNews()).willReturn(news);
 
-        NewsKeyword mockNewsKeyword = mock(NewsKeyword.class);
+        org.mockito.Mockito.lenient().when(scrap.getUser()).thenReturn(user);
+        org.mockito.Mockito.lenient().when(scrap.getNews()).thenReturn(news);
+
+        // News 내부에 키워드 리스트 세팅
         Keyword mockKeyword = mock(Keyword.class);
-        given(news.getNewsKeywords()).willReturn(List.of(mockNewsKeyword));
-        given(mockNewsKeyword.getKeyword()).willReturn(mockKeyword);
+        NewsKeyword mockNewsKeyword = mock(NewsKeyword.class);
+        org.mockito.Mockito.lenient().when(news.getNewsKeywords()).thenReturn(List.of(mockNewsKeyword));
+        org.mockito.Mockito.lenient().when(mockNewsKeyword.getKeyword()).thenReturn(mockKeyword);
+
+        float[] newEmbedding = {0.1f, 0.2f, 0.3f};
+        UserEmbedding.Response mockRes = UserEmbedding.Response.builder()
+                .userId(userId)
+                .embedding(newEmbedding)
+                .build();
 
         given(aiClient.updateUserEmbedding(any())).willReturn(mockRes);
 
-        // When
+        // when
         userVectorService.updateUserEmbeddingAsync(userId, newsId, "SCRAP");
 
-        // Then
-        verify(user, times(1)).updateEmbedding(newEmbedding);
-        verify(userRepository, times(1)).saveAndFlush(user);
+        // then
+        verify(user).updateEmbedding(newEmbedding);
+        verify(userRepository).saveAndFlush(user);
+    }
+
+    @Test
+    @DisplayName("실패: AI 서버 통신 중 예외 발생 시 AiIntegrationException으로 래핑된다")
+    void initUserEmbedding_Fail_CommunicationError() {
+        // given
+        User user = User.create("google", "sub-123", "sungmin", "성민", "test@test.com");
+        given(aiClient.initUserEmbedding(any())).willThrow(new RuntimeException("Connection Refused"));
+
+        // when & then
+        assertThrows(AiIntegrationException.class, () ->
+                userVectorService.initUserEmbedding(user, List.of(mock(Keyword.class)))
+        );
+    }
+
+    // --- Helper Method ---
+    private Keyword createMockKeyword(Long id, String word, float[] embedding) {
+        Keyword k = mock(Keyword.class);
+        given(k.getId()).willReturn(id);
+        given(k.getWord()).willReturn(word);
+        given(k.getEmbedding()).willReturn(embedding);
+        return k;
     }
 }

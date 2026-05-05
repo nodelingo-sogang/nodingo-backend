@@ -15,20 +15,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.repository.JobRepository;
-import org.springframework.batch.item.ItemProcessor;
-import org.springframework.batch.item.ItemReader;
-import org.springframework.batch.item.ItemWriter;
-import org.springframework.batch.item.Chunk;
 import org.springframework.transaction.PlatformTransactionManager;
 
-import java.lang.reflect.Field;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.*;
-
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.BDDMockito.*;
-
 
 @ExtendWith(MockitoExtension.class)
 class NewsBatchConfigTest {
@@ -36,8 +25,6 @@ class NewsBatchConfigTest {
     @Mock private JobRepository jobRepository;
     @Mock private PlatformTransactionManager transactionManager;
     @Mock private MyJobListener myJobListener;
-
-    // 부품들 Mock
     @Mock private NewsApiReader newsApiReader;
     @Mock private NewsAiProcessor newsProcessor;
     @Mock private NewsAiWriter newsAiWriter;
@@ -50,15 +37,12 @@ class NewsBatchConfigTest {
         config = new NewsBatchConfig(
                 jobRepository,
                 transactionManager,
-                myJobListener,
-                newsApiReader,
-                newsProcessor,
-                newsAiWriter
+                myJobListener
         );
     }
 
     @Test
-    @DisplayName("Job과 Step이 설정대로 생성되어야 한다")
+    @DisplayName("Job과 Step이 리팩토링된 타입(NewsApiItem) 기준으로 생성되어야 한다")
     void jobAndStepCreationTest() {
         // when
         Step newsStep = config.newsStep(newsApiReader, newsProcessor, newsAiWriter);
@@ -68,6 +52,7 @@ class NewsBatchConfigTest {
         // then
         assertThat(newsStep).isNotNull();
         assertThat(newsStep.getName()).isEqualTo("newsStep");
+        assertThat(relationStep).isNotNull();
         assertThat(dailyJob).isNotNull();
         assertThat(dailyJob.getName()).isEqualTo("dailyNewsJob");
     }

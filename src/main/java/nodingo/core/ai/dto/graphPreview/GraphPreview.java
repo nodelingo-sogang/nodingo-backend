@@ -11,23 +11,22 @@ import java.util.List;
 public class GraphPreview {
 
     @Getter @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
+    @NoArgsConstructor @AllArgsConstructor
     public static class Request {
-        private List<RecommendKeywordInput> recommendKeywords;
-        private List<KeywordRelationInput> keywordRelations;
+        private List<GraphRecommendKeywordInput> recommendKeywords;
+        private List<GraphKeywordRelationInput> keywordRelations;
     }
 
     @Getter
     @NoArgsConstructor @AllArgsConstructor
     public static class Response {
-        private List<Node> nodes;
-        private List<Edge> edges;
+        private List<GraphNode> nodes;
+        private List<GraphEdge> edges;
     }
 
     @Getter @Builder
     @NoArgsConstructor @AllArgsConstructor
-    public static class RecommendKeywordInput {
+    public static class GraphRecommendKeywordInput {
         private Long keywordId;
         private String word;
         private double score;
@@ -36,7 +35,7 @@ public class GraphPreview {
 
     @Getter @Builder
     @NoArgsConstructor @AllArgsConstructor
-    public static class KeywordRelationInput {
+    public static class GraphKeywordRelationInput {
         private Long sourceKeywordId;
         private Long targetKeywordId;
         private double relationScore;
@@ -44,7 +43,7 @@ public class GraphPreview {
 
     @Getter
     @NoArgsConstructor @AllArgsConstructor
-    public static class Node {
+    public static class GraphNode {
         private Long id;
         private String label;
         private double score;
@@ -53,7 +52,7 @@ public class GraphPreview {
 
     @Getter
     @NoArgsConstructor @AllArgsConstructor
-    public static class Edge {
+    public static class GraphEdge {
         private Long source;
         private Long target;
         private double weight;

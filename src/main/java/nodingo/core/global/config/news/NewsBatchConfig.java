@@ -2,16 +2,13 @@ package nodingo.core.global.config.news;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import nodingo.core.batch.dto.event.EventApiItem;
+import nodingo.core.batch.dto.article.NewsApiItem;
 import nodingo.core.batch.listener.MyJobListener;
-import nodingo.core.batch.news.processor.NewsAiProcessor;
-import nodingo.core.batch.news.reader.NewsApiReader;
-import nodingo.core.batch.news.writer.NewsAiWriter;
-import nodingo.core.batch.news.tasklet.NewsRelationTasklet;
 import nodingo.core.news.domain.News;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.job.builder.JobBuilder;
+import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.item.ItemProcessor;
@@ -31,9 +28,6 @@ public class NewsBatchConfig {
     private final JobRepository jobRepository;
     private final PlatformTransactionManager transactionManager;
     private final MyJobListener myJobListener;
-    private final NewsApiReader newsApiReader;
-    private final NewsAiProcessor newsProcessor;
-    private final NewsAiWriter newsAiWriter;
 
     @Bean
     public Job dailyNewsJob(Step newsStep, Step relationStep) {
@@ -45,11 +39,12 @@ public class NewsBatchConfig {
     }
 
     @Bean
-    public Step newsStep(ItemReader<EventApiItem> newsApiReader,  // 인터페이스로 변경
-                         ItemProcessor<EventApiItem, News> newsProcessor, // 인터페이스로 변경
-                         ItemWriter<News> newsAiWriter) { // 인터페이스로 변경
+    public Step newsStep(ItemReader<NewsApiItem> newsApiReader,
+                         ItemProcessor<NewsApiItem, News> newsProcessor,
+                         ItemWriter<News> newsAiWriter) {
+
         return new StepBuilder("newsStep", jobRepository)
-                .<EventApiItem, News>chunk(CHUNK_SIZE, transactionManager)
+                .<NewsApiItem, News>chunk(CHUNK_SIZE, transactionManager)
                 .reader(newsApiReader)
                 .processor(newsProcessor)
                 .writer(newsAiWriter)
@@ -57,9 +52,9 @@ public class NewsBatchConfig {
     }
 
     @Bean
-    public Step relationStep(NewsRelationTasklet relationTasklet) {
+    public Step relationStep(Tasklet newsRelationTasklet) {
         return new StepBuilder("relationStep", jobRepository)
-                .tasklet(relationTasklet, transactionManager)
+                .tasklet(newsRelationTasklet, transactionManager)
                 .build();
     }
 }

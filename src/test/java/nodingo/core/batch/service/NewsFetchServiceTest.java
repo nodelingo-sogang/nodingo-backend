@@ -1,10 +1,8 @@
 package nodingo.core.batch.service;
 
 import lombok.extern.slf4j.Slf4j;
-import nodingo.core.batch.dto.event.Concept;
-import nodingo.core.batch.dto.event.EventApiItem;
-import nodingo.core.batch.dto.event.EventApiResponse;
-import nodingo.core.batch.dto.event.NewsApiItem;
+import nodingo.core.batch.dto.article.NewsApiItem;
+import nodingo.core.batch.dto.article.NewsApiResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,121 +23,42 @@ class NewsFetchServiceTest {
     private NewsFetchService newsFetchService;
 
     @Test
-    @DisplayName("Event Registry - event의 infoArticle uri로 article 본문을 재조회할 수 있다")
-    void fetchEventsTest() {
+    @DisplayName("Article API - 어제 05:01 ~ 오늘 04:59 범위의 뉴스를 본문 포함하여 가져온다")
+    void fetchNewsTest() {
         // given
         LocalDate targetDate = LocalDate.now().minusDays(1);
         int page = 1;
 
         // when
-        EventApiResponse response = newsFetchService.fetchEvents(targetDate, page);
+        NewsApiResponse response = newsFetchService.fetchNews(targetDate, page);
 
-        // then: event 응답 검증
+        // then
         assertThat(response).isNotNull();
-        assertThat(response.getEvents()).isNotNull();
+        assertThat(response.getArticles()).isNotNull();
 
-        List<EventApiItem> results = response.getEvents().getResults();
+        List<NewsApiItem> results = response.getArticles().getResults();
 
         assertThat(results)
-                .as("events.results가 비어 있음")
-                .isNotNull()
+                .as("기사 목록이 비어 있으면 테스트 진행 불가 (API 데이터 확인 필요)")
                 .isNotEmpty();
 
-        EventApiItem event = results.stream()
-                .filter(e -> getRepresentativeArticle(e) != null)
-                .findFirst()
-                .orElseThrow(() -> new AssertionError("infoArticle.uri가 있는 event를 찾지 못함"));
+        NewsApiItem article = results.get(0);
 
-        assertThat(event.getConcepts())
-                .as("event.concepts는 keyword 저장용이므로 필수")
-                .isNotNull()
-                .isNotEmpty();
+        assertThat(article.getUri()).isNotBlank();
+        assertThat(article.getTitle()).isNotBlank();
 
-        Concept concept = event.getConcepts().get(0);
-        String keyword = getConceptLabel(concept);
-
-        assertThat(keyword)
-                .as("concept.label.kor 또는 concept.label.eng가 있어야 keyword 저장 가능")
+        assertThat(article.getBody())
+                .as("AI 분석을 위해 본문 전체가 수집되어야 함")
                 .isNotBlank();
 
-        NewsApiItem infoArticle = getRepresentativeArticle(event);
-
-        assertThat(infoArticle).isNotNull();
-        assertThat(infoArticle.getUri())
-                .as("article 본문 재조회용 uri는 필수")
-                .isNotBlank();
-
-        // when: article 상세 조회
-        NewsApiItem fullArticle = newsFetchService.fetchArticle(infoArticle.getUri());
-
-        // then: 본문 검증
-        assertThat(fullArticle).isNotNull();
-
-        assertThat(fullArticle.getBody())
-                .as("뉴스 본문 저장 필수")
-                .isNotBlank();
-
-        assertThat(fullArticle.getBody().length())
-                .as("본문 길이가 너무 짧으면 full body가 아닐 가능성 있음")
+        assertThat(article.getBody().length())
+                .as("본문이 너무 짧음 (풀텍스트 수집 여부 확인 필요)")
                 .isGreaterThan(100);
 
-        log.info(">>>> [Test Result] Event URI: {}", event.getUri());
-        log.info(">>>> [Test Result] Event Title: {}", getTitle(event));
-        log.info(">>>> [Test Result] Keyword: {}", keyword);
-        log.info(">>>> [Test Result] InfoArticle URI: {}", infoArticle.getUri());
-        log.info(">>>> [Test Result] Full Article URI: {}", fullArticle.getUri());
-        log.info(">>>> [Test Result] Full Article URL: {}", fullArticle.getUrl());
-        log.info(">>>> [Test Result] Full Article Lang: {}", fullArticle.getLang());
-        log.info(">>>> [Test Result] Full Article Body Length: {}", fullArticle.getBody().length());
-    }
-
-    private NewsApiItem getRepresentativeArticle(EventApiItem event) {
-        if (event == null || event.getInfoArticle() == null) {
-            return null;
-        }
-
-        NewsApiItem kor = event.getInfoArticle().getKor();
-        if (kor != null && kor.getUri() != null && !kor.getUri().isBlank()) {
-            return kor;
-        }
-
-        NewsApiItem eng = event.getInfoArticle().getEng();
-        if (eng != null && eng.getUri() != null && !eng.getUri().isBlank()) {
-            return eng;
-        }
-
-        return null;
-    }
-
-    private String getTitle(EventApiItem event) {
-        if (event == null || event.getTitle() == null) {
-            return null;
-        }
-
-        if (event.getTitle().getKor() != null && !event.getTitle().getKor().isBlank()) {
-            return event.getTitle().getKor();
-        }
-
-        if (event.getTitle().getEng() != null && !event.getTitle().getEng().isBlank()) {
-            return event.getTitle().getEng();
-        }
-
-        return null;
-    }
-
-    private String getConceptLabel(Concept concept) {
-        if (concept == null || concept.getLabel() == null) {
-            return null;
-        }
-
-        if (concept.getLabel().getKor() != null && !concept.getLabel().getKor().isBlank()) {
-            return concept.getLabel().getKor();
-        }
-
-        if (concept.getLabel().getEng() != null && !concept.getLabel().getEng().isBlank()) {
-            return concept.getLabel().getEng();
-        }
-
-        return null;
+        log.info(">>>> [Test Result] Article URI: {}", article.getUri());
+        log.info(">>>> [Test Result] Title: {}", article.getTitle());
+        log.info(">>>> [Test Result] DateTimePub: {}", article.getDateTimePub());
+        log.info(">>>> [Test Result] Body Length: {}", article.getBody().length());
+        log.info(">>>> [Test Result] Total Articles in Page: {}", results.size());
     }
 }

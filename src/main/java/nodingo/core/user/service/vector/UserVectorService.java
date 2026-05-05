@@ -79,7 +79,12 @@ public class UserVectorService {
 
             // AI 업데이트
             UserEmbedding.Activity activity = UserEmbedding.Activity.createScrap(news, 0.5);
-            UserEmbedding.UpdateRequest req = UserEmbedding.UpdateRequest.create(user, List.of(activity));
+            UserEmbedding.UpdateRequest req = UserEmbedding.UpdateRequest.builder()
+                    .userId(user.getId())
+                    .oldEmbedding(user.getEmbedding())
+                    .activities(List.of(activity))
+                    .decay(0.7)
+                    .build();
             UserEmbedding.Response res = aiClient.updateUserEmbedding(req);
 
             if (res != null && res.getEmbedding() != null) {

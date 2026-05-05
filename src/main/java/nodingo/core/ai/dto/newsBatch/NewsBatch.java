@@ -64,7 +64,6 @@ public class NewsBatch {
         private double weight;
         private boolean isNew;
         private List<String> aliases;
-
     }
 
     @Getter
