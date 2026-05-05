@@ -21,7 +21,7 @@ public class KeywordRecommend {
         private int topK;
     }
 
-    @Getter
+    @Getter @Builder
     @NoArgsConstructor @AllArgsConstructor
     public static class Response {
         private List<RecommendResult> recommendKeywords;
@@ -38,7 +38,7 @@ public class KeywordRecommend {
         private boolean isUserInterest;
     }
 
-    @Getter
+    @Getter @Builder
     @NoArgsConstructor @AllArgsConstructor
     public static class RecommendResult {
         private Long userId;

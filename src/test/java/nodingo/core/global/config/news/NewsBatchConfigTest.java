@@ -1,11 +1,11 @@
 package nodingo.core.global.config.news;
 
+import nodingo.core.batch.dto.article.NewsApiItem;
 import nodingo.core.batch.listener.MyJobListener;
-import nodingo.core.batch.news.processor.NewsAiProcessor;
-import nodingo.core.batch.news.reader.NewsApiReader;
-import nodingo.core.batch.news.tasklet.NewsRelationTasklet;
-import nodingo.core.batch.news.writer.NewsAiWriter;
 
+import nodingo.core.keyword.domain.RecommendKeyword;
+import nodingo.core.news.domain.News;
+import nodingo.core.user.domain.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,10 +14,18 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
+import org.springframework.batch.core.job.SimpleJob;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import org.springframework.batch.core.step.tasklet.Tasklet;
+import org.springframework.batch.item.ItemProcessor;
+import org.springframework.batch.item.ItemReader;
+import org.springframework.batch.item.ItemWriter;
+
+import java.util.List;
+
 
 @ExtendWith(MockitoExtension.class)
 class NewsBatchConfigTest {
@@ -25,10 +33,20 @@ class NewsBatchConfigTest {
     @Mock private JobRepository jobRepository;
     @Mock private PlatformTransactionManager transactionManager;
     @Mock private MyJobListener myJobListener;
-    @Mock private NewsApiReader newsApiReader;
-    @Mock private NewsAiProcessor newsProcessor;
-    @Mock private NewsAiWriter newsAiWriter;
-    @Mock private NewsRelationTasklet relationTasklet;
+
+    @Mock private ItemReader<NewsApiItem> newsApiReader;
+    @Mock private ItemProcessor<NewsApiItem, News> newsProcessor;
+    @Mock private ItemWriter<News> newsAiWriter;
+
+    @Mock private Tasklet relationTasklet;
+
+    @Mock private ItemReader<User> userReader;
+    @Mock private ItemProcessor<User, List<RecommendKeyword>> recommendProcessor;
+    @Mock private ItemWriter<List<RecommendKeyword>> recommendWriter;
+
+    @Mock private ItemReader<RecommendKeyword> recommendSummaryReader;
+    @Mock private ItemProcessor<RecommendKeyword, RecommendKeyword> recommendSummaryProcessor;
+    @Mock private ItemWriter<RecommendKeyword> recommendSummaryWriter;
 
     private NewsBatchConfig config;
 
@@ -42,18 +60,32 @@ class NewsBatchConfigTest {
     }
 
     @Test
-    @DisplayName("Job과 Step이 리팩토링된 타입(NewsApiItem) 기준으로 생성되어야 한다")
+    @DisplayName("Job과 4개의 Step이 정상 생성되고 순서대로 연결된다")
     void jobAndStepCreationTest() {
+
         // when
         Step newsStep = config.newsStep(newsApiReader, newsProcessor, newsAiWriter);
         Step relationStep = config.relationStep(relationTasklet);
-        Job dailyJob = config.dailyNewsJob(newsStep, relationStep);
+        Step recommendStep = config.recommendStep(userReader, recommendProcessor, recommendWriter);
+        Step summaryStep = config.recommendSummaryStep(
+                recommendSummaryReader,
+                recommendSummaryProcessor,
+                recommendSummaryWriter
+        );
+
+        Job job = config.dailyNewsJob(newsStep, relationStep, recommendStep, summaryStep);
 
         // then
-        assertThat(newsStep).isNotNull();
-        assertThat(newsStep.getName()).isEqualTo("newsStep");
-        assertThat(relationStep).isNotNull();
-        assertThat(dailyJob).isNotNull();
-        assertThat(dailyJob.getName()).isEqualTo("dailyNewsJob");
+        assertThat(job).isNotNull();
+        assertThat(job.getName()).isEqualTo("dailyNewsJob");
+
+        SimpleJob simpleJob = (SimpleJob) job;
+
+        assertThat(simpleJob.getStepNames()).containsExactly(
+                "newsStep",
+                "relationStep",
+                "recommendStep",
+                "recommendSummaryStep"
+        );
     }
 }

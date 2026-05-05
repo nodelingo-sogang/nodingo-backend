@@ -18,4 +18,6 @@ public interface UserInterestRepository extends JpaRepository<UserInterest, Long
             "join fetch ui.keyword " +
             "where ui.user.id = :userId and ui.targetDate = :today")
     List<UserInterest> findTodayInterestsWithKeywords(@Param("userId") Long userId, @Param("today") LocalDate today);
+
+    List<UserInterest> findByUserId(Long userId);
 }
