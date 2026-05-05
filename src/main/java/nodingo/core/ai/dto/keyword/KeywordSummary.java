@@ -20,7 +20,7 @@ public class KeywordSummary {
         private LocalDate targetDate;
     }
 
-    @Getter
+    @Getter @Builder
     @NoArgsConstructor @AllArgsConstructor
     public static class Response {
         private Long userId;

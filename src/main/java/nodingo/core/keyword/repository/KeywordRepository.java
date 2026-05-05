@@ -1,6 +1,7 @@
 package nodingo.core.keyword.repository;
 
 import nodingo.core.keyword.domain.Keyword;
+import nodingo.core.keyword.repository.custom.KeywordRepositoryCustom;
 import nodingo.core.user.domain.InterestLevel;
 import nodingo.core.user.domain.UserPersona;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -10,7 +11,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
 
-public interface KeywordRepository extends JpaRepository<Keyword, Long> {
+public interface KeywordRepository extends JpaRepository<Keyword, Long>, KeywordRepositoryCustom {
     // 중분류 조회
     List<Keyword> findAllByPersonaAndLevel(UserPersona persona, InterestLevel level);
 

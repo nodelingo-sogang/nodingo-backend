@@ -55,6 +55,9 @@ public class Keyword extends BaseTimeEntity {
     @OneToMany(mappedBy = "keyword", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<KeywordAlias> aliases = new ArrayList<>();
 
+    @OneToMany(mappedBy = "keyword")
+    private List<NewsKeyword> newsKeywords = new ArrayList<>();
+
     public static Keyword createOnboardingKeyword(String word, UserPersona persona, InterestLevel level, Keyword parent) {
         Keyword keyword = new Keyword();
         keyword.word = word;
