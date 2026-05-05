@@ -6,6 +6,7 @@ import nodingo.core.global.exception.auth.InvalidTokenException;
 import nodingo.core.global.exception.auth.TokenNotFoundException;
 import nodingo.core.global.exception.keyword.KeywordNotFoundException;
 import nodingo.core.global.exception.news.NewsIllegalException;
+import nodingo.core.global.exception.news.NewsNotFoundException;
 import nodingo.core.global.exception.user.UserNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -51,6 +52,12 @@ public class GlobalExceptionHandler {
     //KeywordNotFoundException
     @ExceptionHandler(KeywordNotFoundException.class)
     protected ResponseEntity<ApiResponse<?>> handleKeywordNotFoundException(KeywordNotFoundException e) {
+        return buildErrorResponse(HttpStatus.NOT_FOUND, e.getMessage());
+    }
+
+    //NewsNotFoundException
+    @ExceptionHandler(NewsNotFoundException.class)
+    protected ResponseEntity<ApiResponse<?>> handleNewsNotFoundException(NewsNotFoundException e) {
         return buildErrorResponse(HttpStatus.NOT_FOUND, e.getMessage());
     }
 
