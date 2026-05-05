@@ -8,7 +8,7 @@ import nodingo.core.global.auth.CustomOAuth2User;
 import nodingo.core.global.dto.response.ApiResponse;
 import nodingo.core.news.dto.response.NewsDetailResponse;
 import nodingo.core.news.dto.result.NewsDetailResult;
-import nodingo.core.news.service.NewsQueryService;
+import nodingo.core.news.service.query.NewsQueryService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;

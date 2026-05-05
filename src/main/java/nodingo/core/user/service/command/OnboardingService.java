@@ -1,4 +1,4 @@
-package nodingo.core.user.service;
+package nodingo.core.user.service.command;
 
 import lombok.RequiredArgsConstructor;
 import nodingo.core.global.exception.keyword.KeywordNotFoundException;

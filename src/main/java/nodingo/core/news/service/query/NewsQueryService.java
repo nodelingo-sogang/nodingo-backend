@@ -1,4 +1,4 @@
-package nodingo.core.news.service;
+package nodingo.core.news.service.query;
 
 import lombok.RequiredArgsConstructor;
 import nodingo.core.global.exception.news.NewsNotFoundException;
