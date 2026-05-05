@@ -12,8 +12,7 @@ import java.util.List;
 public class KeywordRecommend {
 
     @Getter @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
+    @NoArgsConstructor @AllArgsConstructor
     public static class Request {
         private Long userId;
         private float[] userEmbedding;
@@ -33,6 +32,7 @@ public class KeywordRecommend {
     public static class CandidateKeyword {
         private Long keywordId;
         private String word;
+        private String normalizedWord;
         private float[] embedding;
         private double recentImportance;
         private boolean isUserInterest;
@@ -45,5 +45,6 @@ public class KeywordRecommend {
         private Long keywordId;
         private LocalDate targetDate;
         private double score;
+        private String summary;
     }
 }

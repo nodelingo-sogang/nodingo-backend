@@ -4,6 +4,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.time.LocalDate;
 import java.util.List;
 
 public class KeywordSummary {
@@ -11,15 +13,20 @@ public class KeywordSummary {
     @Getter @Builder
     @NoArgsConstructor @AllArgsConstructor
     public static class Request {
-        private List<SummaryKeywordInput> keywords;
+        private Long userId;
+        private SummaryKeywordInput keyword;
         private List<SummaryNewsInput> relatedNews;
-        private String userPersona;
+        private List<SummaryRelatedKeywordInput> relatedKeywords;
+        private LocalDate targetDate;
     }
 
     @Getter
     @NoArgsConstructor @AllArgsConstructor
     public static class Response {
-        private String summary; // AI가 생성한 최종 브리핑 본문
+        private Long userId;
+        private Long keywordId;
+        private LocalDate targetDate;
+        private String summary;
     }
 
     @Getter @Builder
@@ -35,5 +42,12 @@ public class KeywordSummary {
         private Long newsId;
         private String title;
         private String body;
+    }
+
+    @Getter @Builder
+    @NoArgsConstructor @AllArgsConstructor
+    public static class SummaryRelatedKeywordInput {
+        private Long keywordId;
+        private String word;
     }
 }

@@ -1,10 +1,8 @@
 package nodingo.core.batch.news.reader;
-
-import nodingo.core.batch.dto.event.EventApiItem;
-import nodingo.core.batch.dto.event.EventApiResponse;
-import nodingo.core.batch.dto.event.EventWrapper;
+import nodingo.core.batch.dto.article.ArticleWrapper;
+import nodingo.core.batch.dto.article.NewsApiItem;
+import nodingo.core.batch.dto.article.NewsApiResponse;
 import nodingo.core.batch.service.NewsFetchService;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,13 +12,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
-import java.lang.reflect.Field;
 import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+
 
 @ExtendWith(MockitoExtension.class)
 class NewsApiReaderTest {
@@ -29,28 +27,28 @@ class NewsApiReaderTest {
     @InjectMocks private NewsApiReader reader;
 
     @Test
-    @DisplayName("API로부터 받은 데이터를 Iterator를 통해 순차적으로 읽어야 한다")
+    @DisplayName("API로부터 받은 뉴스 목록을 Iterator를 통해 순차적으로 읽어야 한다")
     void read_Success() throws Exception {
         // given
-        EventApiItem eventItem = new EventApiItem();
+        NewsApiItem item = new NewsApiItem();
+        ReflectionTestUtils.setField(item, "uri", "news-1");
 
-        ReflectionTestUtils.setField(eventItem, "uri", "event-1");
+        NewsApiResponse response = new NewsApiResponse();
+        ArticleWrapper wrapper = new ArticleWrapper();
 
-        EventWrapper wrapper = new EventWrapper();
-        ReflectionTestUtils.setField(wrapper, "results", List.of(eventItem));
+        ReflectionTestUtils.setField(wrapper, "results", List.of(item));
         ReflectionTestUtils.setField(wrapper, "pages", 1);
 
-        EventApiResponse response = new EventApiResponse();
-        ReflectionTestUtils.setField(response, "events", wrapper);
+        ReflectionTestUtils.setField(response, "articles", wrapper);
 
-        given(newsFetchService.fetchEvents(any(LocalDate.class), eq(1)))
+        given(newsFetchService.fetchNews(any(LocalDate.class), eq(1)))
                 .willReturn(response);
 
         // when
-        EventApiItem result = reader.read();
+        NewsApiItem result = reader.read();
 
         // then
         assertThat(result).isNotNull();
-        assertThat(result.getUri()).isEqualTo("event-1");
+        assertThat(result.getUri()).isEqualTo("news-1");
     }
 }

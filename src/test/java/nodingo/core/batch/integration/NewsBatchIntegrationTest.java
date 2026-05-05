@@ -3,7 +3,10 @@ package nodingo.core.batch.integration;
 import lombok.extern.slf4j.Slf4j;
 import nodingo.core.ai.client.AiClient;
 import nodingo.core.ai.dto.newsBatch.NewsBatch;
-import nodingo.core.batch.dto.event.*;
+import nodingo.core.ai.dto.relation.NewsRelationAnalysis;
+import nodingo.core.batch.dto.article.ArticleWrapper;
+import nodingo.core.batch.dto.article.NewsApiItem;
+import nodingo.core.batch.dto.article.NewsApiResponse;
 import nodingo.core.batch.service.NewsFetchService;
 import nodingo.core.global.util.NewsSummarizer;
 import nodingo.core.keyword.repository.KeywordRepository;
@@ -28,16 +31,20 @@ import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.context.jdbc.SqlConfig;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.lang.reflect.Field;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
+import org.junit.jupiter.api.DisplayName;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneOffset;
 @Slf4j
 @SpringBootTest
 @SpringBatchTest
@@ -79,9 +86,11 @@ class NewsBatchIntegrationTest {
     void setUp() {
         jobLauncherTestUtils.setJob(dailyNewsJob);
 
+        // 🚀 새로 추가된 keyword_relations 테이블도 깔끔하게 비워줌!
         jdbcTemplate.execute("""
             TRUNCATE TABLE
-                news_relations,   
+                news_relations,
+                keyword_relations,   
                 news_keywords,
                 keyword_alias,
                 keywords,
@@ -91,149 +100,139 @@ class NewsBatchIntegrationTest {
     }
 
     @Test
+    @DisplayName("뉴스 수집, AI 분석(키워드/요약), 관계 맵핑이 포함된 전체 배치가 성공적으로 수행된다")
     void jobShouldCompleteSuccessfully() throws Exception {
-        // given
-        EventApiItem eventItem = createMockEvent("event-uri-1", "article-uri-1");
-        NewsApiItem fullArticle = createMockArticle("article-uri-1");
+        // ==========================================
+        // 1. Mocking: 외부 뉴스 API 응답 (뉴스 2개 세팅)
+        // ==========================================
+        NewsApiItem news1 = createMockArticle("uri-1", "테슬라 실적 발표", "테슬라의 1분기 실적이...");
+        NewsApiItem news2 = createMockArticle("uri-2", "AI 반도체 시장", "엔비디아와 테슬라가 AI 반도체를...");
 
-        EventWrapper wrapper = new EventWrapper();
-        setField(wrapper, "results", List.of(eventItem));
-        setField(wrapper, "pages", 1);
+        NewsApiResponse response = new NewsApiResponse();
+        ArticleWrapper wrapper = new ArticleWrapper();
+        ReflectionTestUtils.setField(wrapper, "results", List.of(news1, news2));
+        ReflectionTestUtils.setField(wrapper, "pages", 1);
+        ReflectionTestUtils.setField(response, "articles", wrapper);
 
-        EventApiResponse response = new EventApiResponse();
-        setField(response, "events", wrapper);
+        // fetchEvents가 fetchNews로 통합되었음!
+        given(newsFetchService.fetchNews(any(), anyInt())).willReturn(response);
 
-        given(newsFetchService.fetchEvents(any(), anyInt()))
-                .willReturn(response);
-
-        given(newsFetchService.fetchArticle(eq("article-uri-1")))
-                .willReturn(fullArticle);
-
+        // ==========================================
+        // 2. Mocking: AI 서버 - 뉴스 임베딩 & 키워드 분석 (Step 1)
+        // ==========================================
         given(aiClient.analyzeNewsBatch(any(NewsBatch.Request.class)))
                 .willAnswer(invocation -> {
                     NewsBatch.Request request = invocation.getArgument(0);
 
-                    Long newsId = request.getNews().get(0).getNewsId();
-
-                    NewsBatch.KeywordAiResult keywordResult = NewsBatch.KeywordAiResult.builder()
+                    // 두 뉴스 모두에 '테슬라', 'AI' 키워드가 추출되었다고 가정 (Builder 사용)
+                    NewsBatch.KeywordAiResult kw1 = NewsBatch.KeywordAiResult.builder()
                             .keywordId(null)
-                            .word("인공지능")
+                            .word("테슬라")
+                            .normalizedWord("테슬라")
                             .weight(0.9)
                             .isNew(true)
                             .embedding(mockEmbedding())
                             .build();
 
-                    NewsBatch.NewsAnalysisResult newsResult = NewsBatch.NewsAnalysisResult.builder()
-                            .newsId(newsId)
+                    NewsBatch.KeywordAiResult kw2 = NewsBatch.KeywordAiResult.builder()
+                            .keywordId(null)
+                            .word("AI")
+                            .normalizedWord("ai")
+                            .weight(0.8)
+                            .isNew(true)
                             .embedding(mockEmbedding())
-                            .keywords(List.of(keywordResult))
                             .build();
 
+                    List<NewsBatch.NewsAnalysisResult> newsResults = request.getNews().stream()
+                            .map(reqNews -> NewsBatch.NewsAnalysisResult.builder()
+                                    .newsId(reqNews.getNewsId())
+                                    .embedding(mockEmbedding())
+                                    .keywords(List.of(kw1, kw2))
+                                    .build())
+                            .toList();
+
+                    // '테슬라'와 'AI' 사이의 키워드 관계 생성
+                    List<NewsBatch.KeywordRelationResult> kwRelations = List.of(
+                            new NewsBatch.KeywordRelationResult(1L, 2L, 0.85)
+                    );
+
                     return NewsBatch.Response.builder()
-                            .newsResults(List.of(newsResult))
+                            .newsResults(newsResults)
+                            .keywordRelations(kwRelations)
                             .build();
                 });
 
         given(newsSummarizer.summarize(any(News.class)))
                 .willReturn("AI가 생성한 200자 요약 본문입니다.");
 
+        // ==========================================
+        // 3. Mocking: AI 서버 - 뉴스 간 관계 분석 (Step 2 - Tasklet)
+        // ==========================================
+        NewsRelationAnalysis.RelationResult newsRelResult = new NewsRelationAnalysis.RelationResult(1L, 2L, 0.92);
+        given(aiClient.buildNewsRelations(any(NewsRelationAnalysis.Request.class)))
+                .willReturn(new NewsRelationAnalysis.Response(List.of(newsRelResult)));
+
+        // ==========================================
+        // 4. Execute Job
+        // ==========================================
         JobParameters jobParameters = new JobParametersBuilder()
                 .addLocalDateTime("requestTime", LocalDateTime.now())
                 .addString("runId", UUID.randomUUID().toString())
                 .toJobParameters();
 
-        // when
         JobExecution jobExecution = jobLauncherTestUtils.launchJob(jobParameters);
 
-        // then
+        // ==========================================
+        // 5. Verification
+        // ==========================================
         assertThat(jobExecution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
 
-        assertThat(newsRepository.count()).isEqualTo(1);
-        assertThat(keywordRepository.count()).isEqualTo(2);
+        // 5-1. 뉴스 엔티티 검증
+        assertThat(newsRepository.count()).isEqualTo(2);
 
-        List<String> keywords = jdbcTemplate.queryForList("""
-        SELECT word
-        FROM keywords
-        """, String.class);
-
-        assertThat(keywords).contains("테슬라", "인공지능");
-
-        Map<String, Object> savedNews = jdbcTemplate.queryForMap("""
-            SELECT uri, title, body, url, lang
-            FROM news
-            WHERE uri = ?
-            """, "article-uri-1");
-
-        assertThat(savedNews.get("uri")).isEqualTo("article-uri-1");
-        assertThat(savedNews.get("title")).isEqualTo("Full Article Title");
-
-        // NewsSummarizer mock 결과가 저장되는 구조이므로 요약문 기준으로 검증
+        Map<String, Object> savedNews = jdbcTemplate.queryForMap(
+                "SELECT uri, title, body FROM news WHERE uri = ?", "uri-1");
+        assertThat(savedNews.get("uri")).isEqualTo("uri-1");
+        assertThat(savedNews.get("title")).isEqualTo("테슬라 실적 발표");
         assertThat(savedNews.get("body")).isEqualTo("AI가 생성한 200자 요약 본문입니다.");
 
-        assertThat(savedNews.get("url")).isEqualTo("https://news.com/article-uri-1");
-        assertThat(savedNews.get("lang")).isEqualTo("kor");
+        // 5-2. 키워드 검증
+        assertThat(keywordRepository.count()).isEqualTo(2);
+        List<String> keywords = jdbcTemplate.queryForList("SELECT word FROM keywords", String.class);
+        assertThat(keywords).containsExactlyInAnyOrder("테슬라", "AI");
 
-        Integer newsKeywordCount = jdbcTemplate.queryForObject("""
-            SELECT COUNT(*)
-            FROM news_keywords nk
-            JOIN news n ON nk.news_id = n.id
-            WHERE n.uri = ?
-            """, Integer.class, "article-uri-1");
+        // 5-3. 매핑 및 관계 테이블 검증
+        Integer newsKeywordCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM news_keywords", Integer.class);
+        assertThat(newsKeywordCount).isEqualTo(4);
 
-        assertThat(newsKeywordCount).isEqualTo(2);
+        Integer newsRelCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM news_relations", Integer.class);
+        assertThat(newsRelCount).isEqualTo(1);
 
-        log.info(">>>> Saved News URI: {}", savedNews.get("uri"));
-        log.info(">>>> Saved News Title: {}", savedNews.get("title"));
-        log.info(">>>> Saved News Body: {}", savedNews.get("body"));
-        log.info(">>>> Saved News Keywords Count: {}", newsKeywordCount);
+        Integer kwRelCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM keyword_relations", Integer.class);
+        assertThat(kwRelCount).isEqualTo(1);
+
+        // 로깅
+        log.info(">>>> [Integration Test] Job Completed.");
+        log.info(">>>> Saved News: 2, Saved Keywords: 2");
+        log.info(">>>> News-Keyword Mappings: {}", newsKeywordCount);
+        log.info(">>>> News Relations: {}", newsRelCount);
+        log.info(">>>> Keyword Relations: {}", kwRelCount);
     }
 
-    private EventApiItem createMockEvent(String eventUri, String articleUri) {
-        EventApiItem event = new EventApiItem();
-
-        ReflectionTestUtils.setField(event, "uri", eventUri);
-        ReflectionTestUtils.setField(event, "sentiment", 0.5);
-
-        EventTitle title = new EventTitle();
-        ReflectionTestUtils.setField(title, "kor", "테스트 이벤트 제목");
-        ReflectionTestUtils.setField(title, "eng", "Test Event Title");
-        ReflectionTestUtils.setField(event, "title", title);
-
-        Concept concept = new Concept();
-        ReflectionTestUtils.setField(concept, "type", "org");
-        ReflectionTestUtils.setField(concept, "score", 100);
-
-        ConceptLabel label = new ConceptLabel();
-        ReflectionTestUtils.setField(label, "kor", "테슬라");
-        ReflectionTestUtils.setField(label, "eng", "Tesla");
-        ReflectionTestUtils.setField(concept, "label", label);
-
-        ReflectionTestUtils.setField(event, "concepts", List.of(concept));
-
-        NewsApiItem infoArticle = new NewsApiItem();
-        ReflectionTestUtils.setField(infoArticle, "uri", articleUri);
-        ReflectionTestUtils.setField(infoArticle, "url", "https://news.com/" + articleUri);
-        ReflectionTestUtils.setField(infoArticle, "lang", "kor");
-
-        InfoArticleWrapper articleWrapper = new InfoArticleWrapper();
-        ReflectionTestUtils.setField(articleWrapper, "kor", infoArticle);
-        ReflectionTestUtils.setField(articleWrapper, "eng", infoArticle);
-
-        ReflectionTestUtils.setField(event, "infoArticle", articleWrapper);
-
-        return event;
-    }
-
-    private NewsApiItem createMockArticle(String articleUri) {
+    private NewsApiItem createMockArticle(String uri, String title, String body) {
         NewsApiItem articleItem = new NewsApiItem();
-
-        ReflectionTestUtils.setField(articleItem, "uri", articleUri);
-        ReflectionTestUtils.setField(articleItem, "url", "https://news.com/" + articleUri);
+        ReflectionTestUtils.setField(articleItem, "uri", uri);
+        ReflectionTestUtils.setField(articleItem, "url", "https://news.com/" + uri);
         ReflectionTestUtils.setField(articleItem, "lang", "kor");
-        ReflectionTestUtils.setField(articleItem, "dateTimePub", "2026-05-01T10:00:00Z");
-        ReflectionTestUtils.setField(articleItem, "title", "Full Article Title");
-        ReflectionTestUtils.setField(articleItem, "body", "This is the full article body content. This body should be saved into news table.");
 
+        String yesterdaySafeTime = LocalDate.now().minusDays(1)
+                .atTime(LocalTime.NOON)
+                .atOffset(ZoneOffset.UTC)
+                .toString();
+        ReflectionTestUtils.setField(articleItem, "dateTimePub", yesterdaySafeTime);
+
+        ReflectionTestUtils.setField(articleItem, "title", title);
+        ReflectionTestUtils.setField(articleItem, "body", body);
         return articleItem;
     }
 
@@ -243,15 +242,5 @@ class NewsBatchIntegrationTest {
         embedding[1] = 0.2f;
         embedding[2] = 0.3f;
         return embedding;
-    }
-
-    private void setField(Object target, String fieldName, Object value) {
-        try {
-            Field field = target.getClass().getDeclaredField(fieldName);
-            field.setAccessible(true);
-            field.set(target, value);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 }

@@ -9,15 +9,38 @@ import nodingo.core.news.domain.NewsRelation;
 import nodingo.core.news.repository.NewsRelationRepository;
 import nodingo.core.news.repository.NewsRepository;
 import org.springframework.batch.core.StepContribution;
+import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.repeat.RepeatStatus;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.core.StepContribution;
+import org.springframework.batch.core.configuration.annotation.StepScope;
+import org.springframework.batch.core.scope.context.ChunkContext;
+import org.springframework.batch.core.step.tasklet.Tasklet;
+import org.springframework.batch.repeat.RepeatStatus;
+import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
+@StepScope
 @RequiredArgsConstructor
 public class NewsRelationTasklet implements Tasklet {
 
@@ -27,17 +50,21 @@ public class NewsRelationTasklet implements Tasklet {
 
     @Override
     public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) {
-        log.info(">>>> [Relation Tasklet] 뉴스 관계 형성 프로세스 시작");
+        log.info(">>>> [Relation Tasklet] Starting news relation building process.");
 
-        // 1. 분석 대상 뉴스 조회 (임베딩 필수)
-        List<News> targetNews = newsRepository.findAll().stream()
-                .filter(n -> n.getEmbedding() != null)
-                .toList();
+        // 1. 분석 대상 뉴스 조회
+        LocalDateTime startTime = LocalDate.now().minusDays(1).atTime(5, 1, 0);
+        LocalDateTime endTime = LocalDate.now().atTime(4, 59, 59);
+
+        List<News> targetNews = newsRepository.findAllByDateTimePubBetweenAndEmbeddingIsNotNull(startTime, endTime);
 
         if (targetNews.size() < 2) {
-            log.warn(">>>> [Relation Tasklet] 비교할 뉴스가 부족합니다. (건수: {})", targetNews.size());
+            log.warn(">>>> [Relation Tasklet] Not enough news to compare today. (count: {})", targetNews.size());
             return RepeatStatus.FINISHED;
         }
+
+        Map<Long, News> newsMap = targetNews.stream()
+                .collect(Collectors.toMap(News::getId, Function.identity()));
 
         // 2. AI 서버 요청 객체 생성
         List<NewsRelationAnalysis.NewsEmbeddingInput> inputs = targetNews.stream()
@@ -49,7 +76,8 @@ public class NewsRelationTasklet implements Tasklet {
 
         NewsRelationAnalysis.Request request = NewsRelationAnalysis.Request.builder()
                 .newsEmbeddings(inputs)
-                .similarityThreshold(0.7)
+                .similarityThreshold(0.55)
+                .topK(5)
                 .build();
 
         try {
@@ -58,21 +86,26 @@ public class NewsRelationTasklet implements Tasklet {
 
             // 4. 결과 매핑 및 DB 저장
             if (response.getRelations() != null) {
+                List<NewsRelation> relationsToSave = new ArrayList<>();
+
                 for (NewsRelationAnalysis.RelationResult res : response.getRelations()) {
-                    News subject = newsRepository.findById(res.getSubjectNewsId()).orElse(null);
-                    News related = newsRepository.findById(res.getRelatedNewsId()).orElse(null);
+                    News subject = newsMap.get(res.getSubjectNewsId());
+                    News related = newsMap.get(res.getRelatedNewsId());
 
                     if (subject != null && related != null) {
-                        // 중복 방지 로직이 포함된 엔티티 생성
                         NewsRelation relation = NewsRelation.create(subject, related, res.getRelationScore());
-                        newsRelationRepository.save(relation);
+                        relationsToSave.add(relation);
                     }
                 }
-                log.info(">>>> [Relation Tasklet] 성공적으로 {}개의 관계를 형성했습니다.", response.getRelations().size());
+
+                if (!relationsToSave.isEmpty()) {
+                    newsRelationRepository.saveAll(relationsToSave);
+                    log.info(">>>> [Relation Tasklet] Successfully saved {} relations to the DB.", relationsToSave.size());
+                }
             }
 
         } catch (Exception e) {
-            log.error(">>>> [Relation Tasklet] AI 서버 통신 에러: {}", e.getMessage());
+            log.error(">>>> [Relation Tasklet] AI server communication error: {}", e.getMessage(), e);
         }
 
         return RepeatStatus.FINISHED;
