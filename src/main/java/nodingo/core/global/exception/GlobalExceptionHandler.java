@@ -1,6 +1,7 @@
 package nodingo.core.global.exception;
 
 import nodingo.core.global.dto.response.ApiResponse;
+import nodingo.core.global.exception.ai.AiIntegrationException;
 import nodingo.core.global.exception.auth.InvalidTokenException;
 import nodingo.core.global.exception.auth.TokenNotFoundException;
 import nodingo.core.global.exception.keyword.KeywordNotFoundException;
@@ -57,6 +58,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NewsIllegalException.class)
     protected ResponseEntity<ApiResponse<?>> handleNewsIllegalException(NewsIllegalException e) {
         return buildErrorResponse(HttpStatus.BAD_REQUEST, e.getMessage());
+    }
+
+    @ExceptionHandler(AiIntegrationException.class)
+    public ResponseEntity<ApiResponse<?>> handleAiIntegrationException(AiIntegrationException e) {
+        return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "AI server processing failed: " + e.getMessage());
     }
 
 
