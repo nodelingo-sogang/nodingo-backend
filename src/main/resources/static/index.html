@@ -122,6 +122,77 @@
         }
     }
 </script>
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
+
+    // 1. Firebase 설정
+    const firebaseConfig = {
+        apiKey: "AIzaSyDW5Wn23NqESCbOdpCrKw-uphDjalwfdAo",
+        authDomain: "nodingo-sogang.firebaseapp.com",
+        projectId: "nodingo-sogang",
+        storageBucket: "nodingo-sogang.firebasestorage.app",
+        messagingSenderId: "527574334308",
+        appId: "1:527574334308:web:ee462ff0e82eb2af599871"
+    };
+
+    // 2. Firebase 초기화
+    const app = initializeApp(firebaseConfig);
+    const messaging = getMessaging(app);
+
+    // 3. 권한 요청 및 토큰 전송 함수
+    async function requestPermission() {
+        console.log('권한 요청 중...');
+        const permission = await Notification.requestPermission();
+
+        if (permission === 'granted') {
+            console.log('알림 권한 허용됨.');
+            try {
+                const currentToken = await getToken(messaging, {
+                    vapidKey: 'BNwAo2BqrsS2e6oZX0K3thUpWWgliycOpJZIeLqmbEzV5k60W-M0UHjgW4Z0G7P2r_mIMBKuZHIcO5z53d9VLyY'
+                });
+
+                if (currentToken) {
+                    console.log('내 기기 토큰:', currentToken);
+
+                    // localStorage에서 JWT 토큰 가져오기
+                    const accessToken = localStorage.getItem('accessToken');
+
+                    // 스프링부트 서버로 전송
+                    fetch('/api/notification/setting', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${accessToken}`
+                        },
+                        body: JSON.stringify({
+                            fcmToken: currentToken,
+                            notifyHour: 11
+                        })
+                    })
+                    .then(res => {
+                        if (res.ok) {
+                            console.log('서버로 토큰 전송 성공!');
+                        } else {
+                            console.error('서버 전송 실패:', res.status);
+                        }
+                    })
+                    .catch(err => console.error('네트워크 에러:', err));
+
+                } else {
+                    console.log('토큰을 획득하지 못했습니다.');
+                }
+            } catch (err) {
+                console.error('FCM 토큰 획득 중 에러 발생:', err);
+            }
+        } else {
+            console.log('알림 권한이 거부되었습니다.');
+        }
+    }
+
+    // 실행
+    requestPermission();
+</script>
 
 </body>
 </html>
