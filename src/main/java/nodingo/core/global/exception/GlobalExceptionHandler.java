@@ -7,6 +7,7 @@ import nodingo.core.global.exception.auth.TokenNotFoundException;
 import nodingo.core.global.exception.keyword.KeywordNotFoundException;
 import nodingo.core.global.exception.news.NewsIllegalException;
 import nodingo.core.global.exception.news.NewsNotFoundException;
+import nodingo.core.global.exception.recommendKeyword.RecommendKeywordNotFoundException;
 import nodingo.core.global.exception.user.UserNotFoundException;
 import nodingo.core.global.exception.userScrap.DuplicateScrapException;
 import nodingo.core.global.exception.userScrap.UserScrapNotFoundException;
@@ -54,6 +55,12 @@ public class GlobalExceptionHandler {
     //KeywordNotFoundException
     @ExceptionHandler(KeywordNotFoundException.class)
     protected ResponseEntity<ApiResponse<?>> handleKeywordNotFoundException(KeywordNotFoundException e) {
+        return buildErrorResponse(HttpStatus.NOT_FOUND, e.getMessage());
+    }
+
+    //RecommendKeywordNotFoundException
+    @ExceptionHandler(RecommendKeywordNotFoundException.class)
+    protected ResponseEntity<ApiResponse<?>> handleRecommendKeywordNotFoundException(RecommendKeywordNotFoundException e) {
         return buildErrorResponse(HttpStatus.NOT_FOUND, e.getMessage());
     }
 

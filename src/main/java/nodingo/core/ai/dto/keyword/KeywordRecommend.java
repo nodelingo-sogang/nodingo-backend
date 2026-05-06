@@ -8,9 +8,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDate;
 import java.util.List;
 
-
 public class KeywordRecommend {
-
     @Getter @Builder
     @NoArgsConstructor @AllArgsConstructor
     public static class Request {
