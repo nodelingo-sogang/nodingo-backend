@@ -2,6 +2,7 @@ package nodingo.core.batch.news.writer;
 
 import nodingo.core.ai.client.AiClient;
 import nodingo.core.ai.dto.newsBatch.NewsBatch;
+import nodingo.core.batch.service.cache.KeywordCacheService;
 import nodingo.core.global.util.NewsSummarizer;
 import nodingo.core.keyword.repository.KeywordRelationRepository;
 import nodingo.core.keyword.repository.KeywordRepository;
@@ -26,7 +27,8 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.atMostOnce;
+
 
 @ExtendWith(MockitoExtension.class)
 class NewsAiWriterTest {
@@ -36,6 +38,8 @@ class NewsAiWriterTest {
     @Mock private KeywordRelationRepository keywordRelationRepository;
     @Mock private AiClient aiClient;
     @Mock private NewsSummarizer newsSummarizer;
+    @Mock private KeywordCacheService keywordCacheService;
+
     @InjectMocks private NewsAiWriter writer;
 
     @Test
@@ -46,7 +50,8 @@ class NewsAiWriterTest {
         ReflectionTestUtils.setField(news, "id", 1L);
 
         given(newsRepository.saveAll(anyList())).willAnswer(i -> i.getArgument(0));
-        given(keywordRepository.findAll()).willReturn(Collections.emptyList());
+
+        given(keywordCacheService.getAllKeywords()).willReturn(Collections.emptyList());
 
         NewsBatch.Response aiResponse = NewsBatch.Response.builder()
                 .newsResults(List.of(NewsBatch.NewsAnalysisResult.builder()
@@ -67,9 +72,10 @@ class NewsAiWriterTest {
 
         // then
         assertThat(news.getBody()).isEqualTo("요약본");
+
+        verify(keywordCacheService).getAllKeywords();
         verify(newsRepository, times(2)).saveAll(anyList());
         verify(aiClient).analyzeNewsBatch(any(NewsBatch.Request.class));
-
         verify(keywordRelationRepository, atMostOnce()).saveAll(anyList());
     }
 }

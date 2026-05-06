@@ -9,8 +9,6 @@ import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.item.ItemProcessor;
 import org.springframework.stereotype.Component;
 
-
-
 @Slf4j
 @Component
 @StepScope
@@ -24,19 +22,19 @@ public class NewsAiProcessor implements ItemProcessor<NewsApiItem, News> {
         if (articleItem == null) return null;
 
         String articleUri = articleItem.getUri();
+
+        // 1. 유효성 및 중복 검증
         if (articleUri == null || articleUri.isBlank()) {
             log.warn(">>>> [Batch Processor] Skip: uri is empty. url={}", articleItem.getUrl());
             return null;
         }
-
         if (newsRepository.existsByUri(articleUri)) {
-            log.info(">>>> [Batch Processor] Skip: existing article. articleUri={}", articleUri);
             return null;
         }
         if (articleItem.getBody() == null || articleItem.getBody().isBlank()) {
-            log.warn(">>>> [Batch Processor] Skip: body is empty. articleUri={}", articleUri);
             return null;
         }
+
         return NewsApiItem.toEntity(articleItem);
     }
 }

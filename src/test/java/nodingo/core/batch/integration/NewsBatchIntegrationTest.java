@@ -8,7 +8,7 @@ import nodingo.core.ai.dto.relation.NewsRelationAnalysis;
 import nodingo.core.batch.dto.article.ArticleWrapper;
 import nodingo.core.batch.dto.article.NewsApiItem;
 import nodingo.core.batch.dto.article.NewsApiResponse;
-import nodingo.core.batch.service.NewsFetchService;
+import nodingo.core.batch.service.query.NewsFetchService;
 import nodingo.core.global.util.NewsSummarizer;
 import nodingo.core.keyword.repository.KeywordRepository;
 import nodingo.core.keyword.service.command.KeywordRecommendService;
@@ -210,7 +210,11 @@ class NewsBatchIntegrationTest {
         Integer newsKeywordCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM news_keywords", Integer.class);
         assertThat(newsKeywordCount).isEqualTo(4);
 
+        Integer kwRelCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM keyword_relations", Integer.class);
+        assertThat(kwRelCount).isEqualTo(1);
+
         log.info(">>>> [Integration Test] Job Completed Successfully.");
+        log.info(">>>> Saved News: 2, Saved Keywords: 2, Keyword Relations: {}", kwRelCount);
         log.info(">>>> 4단계 (뉴스수집 -> 관계맵핑 -> 유저추천 -> AI브리핑) 파이프라인 정상 구동 확인 완료.");
     }
 

@@ -26,6 +26,9 @@ class NewsAiProcessorTest {
         ReflectionTestUtils.setField(item, "uri", "news-123");
         ReflectionTestUtils.setField(item, "title", "테스트 제목");
         ReflectionTestUtils.setField(item, "body", "충분히 긴 본문 내용입니다...");
+        ReflectionTestUtils.setField(item, "url", "https://test.com");
+        ReflectionTestUtils.setField(item, "lang", "kor");
+        ReflectionTestUtils.setField(item, "dateTimePub", "2026-05-06T10:00:00Z");
 
         given(newsRepository.existsByUri("news-123")).willReturn(false);
 
@@ -44,7 +47,6 @@ class NewsAiProcessorTest {
         // given
         NewsApiItem item = new NewsApiItem();
         ReflectionTestUtils.setField(item, "uri", "existing-uri");
-
         given(newsRepository.existsByUri("existing-uri")).willReturn(true);
 
         // when
@@ -60,7 +62,7 @@ class NewsAiProcessorTest {
         // given
         NewsApiItem item = new NewsApiItem();
         ReflectionTestUtils.setField(item, "uri", "news-1");
-        ReflectionTestUtils.setField(item, "body", ""); // 본문 없음
+        ReflectionTestUtils.setField(item, "body", "");
 
         // when
         News result = processor.process(item);

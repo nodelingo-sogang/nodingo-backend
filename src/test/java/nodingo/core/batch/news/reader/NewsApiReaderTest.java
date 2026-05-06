@@ -2,7 +2,7 @@ package nodingo.core.batch.news.reader;
 import nodingo.core.batch.dto.article.ArticleWrapper;
 import nodingo.core.batch.dto.article.NewsApiItem;
 import nodingo.core.batch.dto.article.NewsApiResponse;
-import nodingo.core.batch.service.NewsFetchService;
+import nodingo.core.batch.service.query.NewsFetchService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

@@ -1,4 +1,4 @@
-package nodingo.core.batch.service;
+package nodingo.core.batch.service.query;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
