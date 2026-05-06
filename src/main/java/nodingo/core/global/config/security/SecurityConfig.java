@@ -42,7 +42,7 @@ public class SecurityConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/", "/index.html", "/favicon.ico").permitAll()
+                        .requestMatchers("/", "/index.html", "/favicon.ico","/firebase-messaging-sw.js").permitAll()
                         .requestMatchers("/auth/callback.html").permitAll()
                         .requestMatchers("/api/batch/**").permitAll()
                         .requestMatchers("/login/**", "/oauth2/**", "/auth/refresh").permitAll()

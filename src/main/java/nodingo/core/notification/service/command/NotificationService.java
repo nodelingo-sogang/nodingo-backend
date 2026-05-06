@@ -1,26 +1,44 @@
 package nodingo.core.notification.service.command;
 
+import com.google.firebase.messaging.FirebaseMessaging;
+import com.google.firebase.messaging.FirebaseMessagingException;
+import com.google.firebase.messaging.Message;
+import com.google.firebase.messaging.Notification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.CacheEvict;
+import nodingo.core.global.exception.user.UserNotFoundException;
+import nodingo.core.notification.domain.NotificationSetting;
+import nodingo.core.notification.dto.command.NotificationCommand;
+import nodingo.core.notification.repository.NotificationSettingRepository;
+import nodingo.core.user.domain.User;
+import nodingo.core.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class NotificationService {
+    private final UserRepository userRepository;
+    private final NotificationSettingRepository notificationSettingRepository;
 
-    /**
-     * 유저별 커스텀 시간에 맞춘 알림 발송 및 캐시 초기화
-     */
-    @Transactional
-    @CacheEvict(value = "batch:graph", allEntries = true)
-    public void sendDailyNotification(Long userId) {
-        log.info("[NotificationService] Sending notification and evicting graph cache for User: {}", userId);
+    public void updateNotificationSetting(NotificationCommand command) {
+        User user = getOrElseThrow(command.getUserId());
+        NotificationSetting setting = getSetting(command.getUserId(), user);
+        setting.update(command.getNotifyHour(), command.getFcmToken());
+    }
 
-        // TODO: FCM 또는 알림 톡 발송 로직
-        // 알림이 나가는 시점 = 어제의 데이터가 구식이 되는 시점
-        // 여기서 CacheEvict가 동작하여 다음 접속 시 신규 그래프를 생성하게 함
+    private User getOrElseThrow(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("사용자를 찾을 수 없습니다."));
+    }
+
+    private NotificationSetting getSetting(Long userId, User user) {
+        return notificationSettingRepository.findByUserId(userId)
+                .orElseGet(() -> {
+                    NotificationSetting newSetting = NotificationSetting.create(user);
+                    return notificationSettingRepository.save(newSetting);
+                });
     }
 }

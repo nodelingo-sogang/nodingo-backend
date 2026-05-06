@@ -40,3 +40,6 @@ out/
 
 # Docker database data
 postgres_data/
+redis_data/
+
+src/main/resources/serviceAccountKey.json
