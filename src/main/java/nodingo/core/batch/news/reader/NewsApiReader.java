@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nodingo.core.batch.dto.article.NewsApiItem;
 import nodingo.core.batch.dto.article.NewsApiResponse;
-import nodingo.core.batch.service.NewsFetchService;
+import nodingo.core.batch.service.query.NewsFetchService;
 import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.stereotype.Component;
@@ -23,9 +23,9 @@ public class NewsApiReader implements ItemReader<NewsApiItem> {
 
     private final NewsFetchService newsFetchService;
 
-    private static final int MAX_TEST_PAGES = 2; //
+    private static final int MAX_TEST_PAGES = 2;
     private int currentPage = 1;
-    private Iterator<NewsApiItem> itemIterator = Collections.emptyIterator(); // Iterator 타입 변경!
+    private Iterator<NewsApiItem> itemIterator = Collections.emptyIterator();
     private boolean isEnd = false;
 
     @Override
