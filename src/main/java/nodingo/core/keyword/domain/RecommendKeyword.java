@@ -57,7 +57,6 @@ public class RecommendKeyword extends BaseTimeEntity {
         return recommendKeyword;
     }
 
-    // AI 브리핑 결과를 업데이트하는 메서드
     public void updateSummary(String summary) {
         this.summary= summary;
     }

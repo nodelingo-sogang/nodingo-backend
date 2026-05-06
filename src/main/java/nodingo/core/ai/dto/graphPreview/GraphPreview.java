@@ -7,7 +7,6 @@ import lombok.NoArgsConstructor;
 
 import java.util.List;
 
-
 public class GraphPreview {
 
     @Getter @Builder
@@ -17,7 +16,7 @@ public class GraphPreview {
         private List<GraphKeywordRelationInput> keywordRelations;
     }
 
-    @Getter
+    @Getter @Builder
     @NoArgsConstructor @AllArgsConstructor
     public static class Response {
         private List<GraphNode> nodes;
@@ -31,6 +30,7 @@ public class GraphPreview {
         private String word;
         private double score;
         private String summary;
+        private String persona;
     }
 
     @Getter @Builder
@@ -41,16 +41,17 @@ public class GraphPreview {
         private double relationScore;
     }
 
-    @Getter
+    @Getter @Builder
     @NoArgsConstructor @AllArgsConstructor
     public static class GraphNode {
         private Long id;
         private String label;
         private double score;
         private String summary;
+        private String persona;
     }
 
-    @Getter
+    @Getter @Builder
     @NoArgsConstructor @AllArgsConstructor
     public static class GraphEdge {
         private Long source;
