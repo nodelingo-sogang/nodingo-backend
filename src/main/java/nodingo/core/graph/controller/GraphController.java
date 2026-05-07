@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Graph", description = "이슈 맵 그래프 시각화 관련 API")
 @RestController
-@RequestMapping("/api/graph")
+@RequestMapping("/api/graphs")
 @RequiredArgsConstructor
 public class GraphController {
 
@@ -62,11 +62,11 @@ public class GraphController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "성공적으로 키워드 요약 정보를 조회했습니다."),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "해당 키워드에 대한 요약 정보를 찾을 수 없습니다.")
     })
-    @GetMapping("/nodes/{keywordId}/summary")
+    @GetMapping("/nodes/{nodeId}/summaries")
     public ResponseEntity<ApiResponse<NodeSummaryResponse>> getNodeSummary(
             @AuthenticationPrincipal CustomOAuth2User customOAuth2User,
-            @PathVariable Long keywordId) {
-        NodeSummaryResult result = graphQueryService.getNodeSummary(customOAuth2User.getUser().getId(), keywordId);
+            @PathVariable Long nodeId) {
+        NodeSummaryResult result = graphQueryService.getNodeSummary(customOAuth2User.getUser().getId(), nodeId);
         return ResponseEntity.ok(new ApiResponse<>(true, 200, "성공적으로 키워드 요약 정보를 조회했습니다.", NodeSummaryResponse.from(result)));
     }
 }
