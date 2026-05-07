@@ -1,4 +1,4 @@
-package nodingo.core.user.service;
+package nodingo.core.user.service.command;
 
 import nodingo.core.keyword.domain.Keyword;
 import nodingo.core.keyword.repository.KeywordRepository;
@@ -10,7 +10,6 @@ import nodingo.core.user.dto.command.InterestCommand;
 import nodingo.core.user.dto.command.SaveOnboardingCommand;
 import nodingo.core.user.repository.UserInterestRepository;
 import nodingo.core.user.repository.UserRepository;
-import nodingo.core.user.service.command.OnboardingService;
 import nodingo.core.user.service.vector.UserVectorService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

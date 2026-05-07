@@ -1,6 +1,6 @@
-package nodingo.core.user.service.command;
+package nodingo.core.news.service.command;
 
-import nodingo.core.global.exception.userScrap.DuplicateScrapException;
+import nodingo.core.global.exception.scrap.DuplicateScrapException;
 import nodingo.core.news.domain.News;
 import nodingo.core.news.repository.NewsRepository;
 import nodingo.core.user.domain.User;
@@ -58,7 +58,7 @@ class NewsScrapServiceTest {
 
         // Then
         verify(userScrapRepository, times(1)).save(any(UserScrap.class));
-        verify(userVectorService, times(1)).updateUserEmbeddingAsync(userId, newsId, "SCRAP");
+        verify(userVectorService, times(1)).updateUserEmbeddingAsync(userId, newsId);
     }
 
     @Test
@@ -73,7 +73,7 @@ class NewsScrapServiceTest {
 
         assertThat(exception.getMessage()).isEqualTo("이미 스크랩한 뉴스입니다.");
         verify(userScrapRepository, never()).save(any());
-        verify(userVectorService, never()).updateUserEmbeddingAsync(any(), any(), any());
+        verify(userVectorService, never()).updateUserEmbeddingAsync(any(), any());
     }
 
     @Test

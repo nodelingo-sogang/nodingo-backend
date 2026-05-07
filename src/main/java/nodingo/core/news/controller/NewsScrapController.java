@@ -1,4 +1,4 @@
-package nodingo.core.user.controller;
+package nodingo.core.news.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -6,7 +6,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import nodingo.core.global.auth.CustomOAuth2User;
 import nodingo.core.global.dto.response.ApiResponse;
-import nodingo.core.user.service.command.NewsScrapService;
+import nodingo.core.news.service.command.NewsScrapService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;

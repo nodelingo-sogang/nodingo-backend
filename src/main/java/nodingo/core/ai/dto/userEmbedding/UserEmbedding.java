@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import nodingo.core.keyword.domain.Keyword;
 import nodingo.core.news.domain.News;
 
 import java.util.List;
@@ -53,13 +54,24 @@ public class UserEmbedding {
         private String type;
         private Long newsId;
         private float[] newsEmbedding;
+        private Long keywordId;
+        private float[] keywordEmbedding;
         private double weight;
 
-        public static Activity createScrap(News news, double weight) {
+        public static Activity createNewsScrap(News news, double weight) {
             return Activity.builder()
                     .type("SCRAP")
                     .newsId(news.getId())
                     .newsEmbedding(news.getEmbedding())
+                    .weight(weight)
+                    .build();
+        }
+
+        public static Activity createKeywordActivity(Keyword keyword, double weight) {
+            return Activity.builder()
+                    .type("CLICK")
+                    .keywordId(keyword.getId())
+                    .keywordEmbedding(keyword.getEmbedding())
                     .weight(weight)
                     .build();
         }

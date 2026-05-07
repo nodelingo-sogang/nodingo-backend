@@ -1,4 +1,4 @@
-package nodingo.core.global.exception.userScrap;
+package nodingo.core.global.exception.scrap;
 
 public class DuplicateScrapException extends RuntimeException {
     public DuplicateScrapException(String message) {

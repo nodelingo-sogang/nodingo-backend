@@ -1,9 +1,9 @@
-package nodingo.core.user.service.command;
+package nodingo.core.news.service.command;
 
 import lombok.RequiredArgsConstructor;
 import nodingo.core.global.exception.news.NewsNotFoundException;
 import nodingo.core.global.exception.user.UserNotFoundException;
-import nodingo.core.global.exception.userScrap.DuplicateScrapException;
+import nodingo.core.global.exception.scrap.DuplicateScrapException;
 import nodingo.core.news.domain.News;
 import nodingo.core.news.repository.NewsRepository;
 import nodingo.core.user.domain.User;
@@ -27,7 +27,7 @@ public class NewsScrapService {
     public void addScrap(Long userId, Long newsId) {
         ifScrapped(userId, newsId);
         createUserScrap(userId, newsId);
-        userVectorService.updateUserEmbeddingAsync(userId, newsId, "SCRAP");
+        userVectorService.updateUserEmbeddingAsync(userId, newsId);
     }
 
     public void removeScrap(Long userId, Long newsId) {
@@ -41,7 +41,7 @@ public class NewsScrapService {
         News news = newsRepository.findById(newsId)
                 .orElseThrow(() -> new NewsNotFoundException("뉴스를 찾을 수 없습니다."));
 
-        userScrapRepository.save(UserScrap.create(user, news));
+        userScrapRepository.save(UserScrap.createNewsScrap(user, news));
     }
 
     private void ifScrapped(Long userId, Long newsId) {
