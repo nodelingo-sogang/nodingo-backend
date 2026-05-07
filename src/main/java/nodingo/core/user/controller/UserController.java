@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "User", description = "사용자 관련 API")
 @RestController
-@RequestMapping("/api/user")
+@RequestMapping("/api/users")
 @RequiredArgsConstructor
 public class UserController {
 
@@ -38,7 +38,7 @@ public class UserController {
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "성공적으로 페르소나 목록을 조회했습니다.")
     })
-    @GetMapping("/personas")
+    @GetMapping("/keywords/personas")
     public ResponseEntity<ApiResponse<PersonaListResponse>> getPersonas(
             @AuthenticationPrincipal CustomOAuth2User customOAuth2User) {
         PersonaListResult result = onboardingQueryService.getPersonas(customOAuth2User.getUser().getId());
@@ -52,6 +52,7 @@ public class UserController {
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "성공적으로 중분류 목록을 조회했습니다.")
     })
+    @GetMapping("/keywords/macro")
     public ResponseEntity<ApiResponse<KeywordListResponse>> getMacros(
             @AuthenticationPrincipal CustomOAuth2User customOAuth2User,
             @RequestParam UserPersona persona) {
