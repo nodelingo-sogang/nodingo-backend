@@ -1,10 +1,12 @@
 package nodingo.core.global.config.news;
 
+import com.google.firebase.messaging.Message;
 import nodingo.core.batch.dto.article.NewsApiItem;
 import nodingo.core.batch.listener.MyJobListener;
 
 import nodingo.core.keyword.domain.RecommendKeyword;
 import nodingo.core.news.domain.News;
+import nodingo.core.notification.domain.NotificationSetting;
 import nodingo.core.user.domain.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -34,19 +36,28 @@ class NewsBatchConfigTest {
     @Mock private PlatformTransactionManager transactionManager;
     @Mock private MyJobListener myJobListener;
 
+    // Step 1: News 수집 관련
     @Mock private ItemReader<NewsApiItem> newsApiReader;
     @Mock private ItemProcessor<NewsApiItem, News> newsProcessor;
     @Mock private ItemWriter<News> newsAiWriter;
 
+    // Step 2: 관계 추출 관련
     @Mock private Tasklet relationTasklet;
 
+    // Step 3: 유저 추천 관련
     @Mock private ItemReader<User> userReader;
     @Mock private ItemProcessor<User, List<RecommendKeyword>> recommendProcessor;
     @Mock private ItemWriter<List<RecommendKeyword>> recommendWriter;
 
+    // Step 4: 요약 생성 관련
     @Mock private ItemReader<RecommendKeyword> recommendSummaryReader;
     @Mock private ItemProcessor<RecommendKeyword, RecommendKeyword> recommendSummaryProcessor;
     @Mock private ItemWriter<RecommendKeyword> recommendSummaryWriter;
+
+    // Step 5: 알림 발송 관련
+    @Mock private ItemReader<NotificationSetting> notificationReader;
+    @Mock private ItemProcessor<NotificationSetting, Message> notificationProcessor;
+    @Mock private ItemWriter<Message> fcmBatchWriter;
 
     private NewsBatchConfig config;
 
@@ -60,7 +71,7 @@ class NewsBatchConfigTest {
     }
 
     @Test
-    @DisplayName("Job과 4개의 Step이 정상 생성되고 순서대로 연결된다")
+    @DisplayName("Job과 5개의 Step이 정상 생성되고 순서대로 연결된다")
     void jobAndStepCreationTest() {
 
         // when
@@ -72,8 +83,13 @@ class NewsBatchConfigTest {
                 recommendSummaryProcessor,
                 recommendSummaryWriter
         );
+        Step notificationStep = config.notificationStep(
+                notificationReader,
+                notificationProcessor,
+                fcmBatchWriter
+        );
 
-        Job job = config.dailyNewsJob(newsStep, relationStep, recommendStep, summaryStep);
+        Job job = config.dailyNewsJob(newsStep, relationStep, recommendStep, summaryStep, notificationStep);
 
         // then
         assertThat(job).isNotNull();
@@ -85,7 +101,8 @@ class NewsBatchConfigTest {
                 "newsStep",
                 "relationStep",
                 "recommendStep",
-                "recommendSummaryStep"
+                "recommendSummaryStep",
+                "notificationStep"
         );
     }
 }

@@ -1,11 +1,13 @@
 package nodingo.core.global.config.news;
 
+import com.google.firebase.messaging.Message;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nodingo.core.batch.dto.article.NewsApiItem;
 import nodingo.core.batch.listener.MyJobListener;
 import nodingo.core.keyword.domain.RecommendKeyword;
 import nodingo.core.news.domain.News;
+import nodingo.core.notification.domain.NotificationSetting;
 import nodingo.core.user.domain.User;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
@@ -36,13 +38,15 @@ public class NewsBatchConfig {
     private final MyJobListener myJobListener;
 
     @Bean
-    public Job dailyNewsJob(Step newsStep, Step relationStep, Step recommendStep, Step recommendSummaryStep) {
+    public Job dailyNewsJob(Step newsStep, Step relationStep, Step recommendStep,
+                            Step recommendSummaryStep, Step notificationStep) {
         return new JobBuilder("dailyNewsJob", jobRepository)
                 .listener(myJobListener)
                 .start(newsStep)
                 .next(relationStep)
                 .next(recommendStep)
                 .next(recommendSummaryStep)
+                .next(notificationStep)
                 .build();
     }
 
@@ -87,6 +91,18 @@ public class NewsBatchConfig {
                 .reader(recommendSummaryItemReader)
                 .processor(recommendSummaryItemProcessor)
                 .writer(recommendSummaryItemWriter)
+                .build();
+    }
+
+    @Bean
+    public Step notificationStep(ItemReader<NotificationSetting> notificationReader,
+                                 ItemProcessor<NotificationSetting, Message> notificationProcessor,
+                                 ItemWriter<Message> fcmBatchWriter) {
+        return new StepBuilder("notificationStep", jobRepository)
+                .<NotificationSetting, Message>chunk(USER_CHUNK_SIZE, transactionManager)
+                .reader(notificationReader)
+                .processor(notificationProcessor)
+                .writer(fcmBatchWriter)
                 .build();
     }
 }

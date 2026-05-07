@@ -14,6 +14,9 @@ import nodingo.core.keyword.repository.KeywordRepository;
 import nodingo.core.keyword.service.command.KeywordRecommendService;
 import nodingo.core.news.domain.News;
 import nodingo.core.news.repository.NewsRepository;
+import nodingo.core.notification.domain.NotificationSetting;
+import nodingo.core.notification.repository.NotificationSettingRepository;
+import nodingo.core.notification.service.command.FcmService;
 import nodingo.core.user.domain.User;
 import nodingo.core.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,10 +43,12 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import org.junit.jupiter.api.DisplayName;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
+
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.verify;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -81,6 +86,9 @@ class NewsBatchIntegrationTest {
     @MockitoBean
     private KeywordRecommendService keywordRecommendService;
 
+    @MockitoBean
+    private FcmService fcmService;
+
     @Autowired
     private NewsRepository newsRepository;
 
@@ -91,6 +99,9 @@ class NewsBatchIntegrationTest {
     private UserRepository userRepository;
 
     @Autowired
+    private NotificationSettingRepository notificationSettingRepository;
+
+    @Autowired
     private JdbcTemplate jdbcTemplate;
 
     @BeforeEach
@@ -99,12 +110,13 @@ class NewsBatchIntegrationTest {
 
         jdbcTemplate.execute("""
             TRUNCATE TABLE
+                notification_setting,
                 recommend_keywords,
                 user_interests,
                 user_personas,
                 users,
                 news_relations,
-                keyword_relations,   
+                keyword_relations,
                 news_keywords,
                 keyword_alias,
                 keywords,
@@ -114,7 +126,7 @@ class NewsBatchIntegrationTest {
     }
 
     @Test
-    @DisplayName("뉴스 수집부터 AI 분석, 관계 맵핑, 유저 추천 및 AI 브리핑 요약까지 전체 배치가 성공적으로 수행된다")
+    @DisplayName("뉴스 수집부터 AI 분석, 관계 맵핑, 유저 추천, AI 브리핑 및 FCM 알림까지 전체 배치가 성공적으로 수행된다")
     void jobShouldCompleteSuccessfully() throws Exception {
         // ==========================================
         // 1. Mocking: 외부 뉴스 API 응답 (뉴스 2개 세팅)
@@ -174,11 +186,17 @@ class NewsBatchIntegrationTest {
                 .willReturn(new NewsRelationAnalysis.Response(List.of(newsRelResult)));
 
         // ==========================================
-        // 4. Data Setup & Mocking: 유저 추천 & AI 브리핑 (Step 3, 4)
+        // 4. Data Setup & Mocking: 유저 추천 & AI 브리핑 (Step 3, 4, 5)
         // ==========================================
         // UserReader가 읽어갈 대상 유저 생성 및 DB 저장
         User testUser = User.create("naver", "provider-123", "tester", "테스터", "test@test.com");
         userRepository.save(testUser);
+
+        // 🔥 4. 알림 Reader가 읽을 수 있도록 현재 시간에 맞는 알림 설정 저장
+        NotificationSetting setting = NotificationSetting.create(testUser);
+        ReflectionTestUtils.setField(setting, "fcmToken", "test-token");
+        ReflectionTestUtils.setField(setting, "notifyHour", LocalDateTime.now().getHour());
+        notificationSettingRepository.save(setting);
 
         // Step 3: 추천 로직 우회 (빈 리스트 반환)
         given(keywordRecommendService.generateRecommendationForUser(any(), any(), any()))
@@ -213,9 +231,12 @@ class NewsBatchIntegrationTest {
         Integer kwRelCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM keyword_relations", Integer.class);
         assertThat(kwRelCount).isEqualTo(1);
 
+        // 🔥 5. 최종 알림 발송 검증
+        verify(fcmService, atLeastOnce()).sendMessages(anyList());
+
         log.info(">>>> [Integration Test] Job Completed Successfully.");
         log.info(">>>> Saved News: 2, Saved Keywords: 2, Keyword Relations: {}", kwRelCount);
-        log.info(">>>> 4단계 (뉴스수집 -> 관계맵핑 -> 유저추천 -> AI브리핑) 파이프라인 정상 구동 확인 완료.");
+        log.info(">>>> 5단계 (뉴스수집 -> 관계맵핑 -> 유저추천 -> AI브리핑 -> FCM알림) 파이프라인 정상 구동 확인 완료.");
     }
 
     private NewsApiItem createMockArticle(String uri, String title, String body) {
