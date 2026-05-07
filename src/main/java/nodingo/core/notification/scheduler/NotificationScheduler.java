@@ -8,46 +8,49 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nodingo.core.notification.domain.NotificationSetting;
 import nodingo.core.notification.service.query.NotificationQueryService;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.JobParameters;
+import org.springframework.batch.core.JobParametersBuilder;
+import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class NotificationScheduler {
-    private final NotificationQueryService notificationQueryService;
+
+    private final JobLauncher jobLauncher;
+    @Qualifier("hourlyNotificationJob")
+    private final Job hourlyNotificationJob;
 
     @Scheduled(cron = "0 0 * * * *")
-    public void run() {
-        int hour = LocalDateTime.now().getHour();
-        if (hour == 0) hour = 24;
+    public void runHourlyNotificationBatch() {
+        log.info("⏰Every hour on the hour! Starting the DailyNewsJob batch process.");
 
-        List<NotificationSetting> targets = notificationQueryService.getTargetSettings(hour);
-
-        for (NotificationSetting target : targets) {
-            sendPush(target.getFcmToken(), target.getUser().getName());
-        }
-    }
-
-    private void sendPush(String token, String name) {
         try {
-            Message message = Message.builder()
-                    .setToken(token)
-                    .setNotification(Notification.builder()
-                            .setTitle("오늘의 뉴스 요약이 도착했습니다! 🗞️")
-                            .setBody(name + "님, 설정하신 시간에 맞춰 오늘의 핵심 뉴스 맵이 준비되었습니다.")
-                            .build())
-                    .putData("click_action", "OPEN_GRAPH_TABS")
-                    .build();
+            JobParameters jobParameters = new JobParametersBuilder()
+                    .addLocalDateTime("requestTime", LocalDateTime.now())
+                    .addString("runId", UUID.randomUUID().toString())
+                    .addString("targetDate", LocalDateTime.now().toLocalDate().toString())
+                    .toJobParameters();
 
-            FirebaseMessaging.getInstance().send(message);
-            log.info("[NotificationService] Push send success -> User: {}", name);
+            jobLauncher.run(hourlyNotificationJob, jobParameters);
 
-        } catch (FirebaseMessagingException e) {
-            log.error("[NotificationService] FCM send error: {}", e.getMessage());
+        } catch (Exception e) {
+            log.error("❌ An error occurred while executing the HourlyNotificationJob batch : {}", e.getMessage(), e);
         }
     }
 }

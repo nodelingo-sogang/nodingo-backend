@@ -38,15 +38,20 @@ public class NewsBatchConfig {
     private final MyJobListener myJobListener;
 
     @Bean
-    public Job dailyNewsJob(Step newsStep, Step relationStep, Step recommendStep,
-                            Step recommendSummaryStep, Step notificationStep) {
+    public Job dailyNewsJob(Step newsStep, Step relationStep, Step recommendStep, Step recommendSummaryStep) {
         return new JobBuilder("dailyNewsJob", jobRepository)
                 .listener(myJobListener)
                 .start(newsStep)
                 .next(relationStep)
                 .next(recommendStep)
                 .next(recommendSummaryStep)
-                .next(notificationStep)
+                .build();
+    }
+
+    @Bean
+    public Job hourlyNotificationJob(Step notificationStep) {
+        return new JobBuilder("hourlyNotificationJob", jobRepository)
+                .start(notificationStep)
                 .build();
     }
 
