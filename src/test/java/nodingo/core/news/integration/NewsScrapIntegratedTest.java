@@ -1,13 +1,13 @@
-package nodingo.core.user.service.integration;
+package nodingo.core.news.integration;
 
-import nodingo.core.global.exception.userScrap.DuplicateScrapException;
+import nodingo.core.global.exception.scrap.DuplicateScrapException;
 import nodingo.core.news.domain.News;
 import nodingo.core.news.repository.NewsRepository;
 import nodingo.core.user.domain.User;
 import nodingo.core.user.domain.UserScrap;
 import nodingo.core.user.repository.UserRepository;
 import nodingo.core.user.repository.UserScrapRepository;
-import nodingo.core.user.service.command.NewsScrapService;
+import nodingo.core.news.service.command.NewsScrapService;
 import nodingo.core.user.service.vector.UserVectorService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -56,7 +56,7 @@ class NewsScrapIntegratedTest {
 
         // Then
         verify(userScrapRepository, times(1)).save(any(UserScrap.class));
-        verify(userVectorService, times(1)).updateUserEmbeddingAsync(userId, newsId, "SCRAP");
+        verify(userVectorService, times(1)).updateUserEmbeddingAsync(userId, newsId);
     }
 
     @Test
@@ -69,7 +69,7 @@ class NewsScrapIntegratedTest {
         assertThrows(DuplicateScrapException.class, () -> newsScrapService.addScrap(userId, newsId));
 
         verify(userScrapRepository, never()).save(any());
-        verify(userVectorService, never()).updateUserEmbeddingAsync(any(), any(), any());
+        verify(userVectorService, never()).updateUserEmbeddingAsync(any(), any());
     }
 
     @Test

@@ -5,20 +5,21 @@ import lombok.RequiredArgsConstructor;
 import nodingo.core.ai.client.AiClient;
 import nodingo.core.ai.dto.userEmbedding.UserEmbedding;
 import nodingo.core.global.exception.ai.AiIntegrationException;
-import nodingo.core.global.exception.news.NewsNotFoundException;
+import nodingo.core.global.exception.keyword.KeywordNotFoundException;
 import nodingo.core.global.exception.user.UserNotFoundException;
-import nodingo.core.global.exception.userScrap.UserScrapNotFoundException;
+import nodingo.core.global.exception.scrap.ScrapNotFoundException;
 import nodingo.core.keyword.domain.Keyword;
+import nodingo.core.keyword.repository.KeywordRepository;
 import nodingo.core.news.domain.News;
 import nodingo.core.news.repository.NewsRepository;
 import nodingo.core.user.domain.User;
 import nodingo.core.user.domain.UserScrap;
 import nodingo.core.user.repository.UserRepository;
+import nodingo.core.user.repository.UserScrapRepository;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.stream.Collectors;
 import java.util.List;
 
 @Slf4j
@@ -29,19 +30,23 @@ public class UserVectorService {
     private final AiClient aiClient;
     private final UserRepository userRepository;
     private final NewsRepository newsRepository;
+    private final KeywordRepository keywordRepository;
+    private final UserScrapRepository userScrapRepository;
 
+    /**
+     * 1. 초기 온보딩 임베딩 생성 (동기)
+     */
     @Transactional
     public void initUserEmbedding(User user, List<Keyword> selectedKeywords) {
         log.info(">>>> [UserVectorService] Starting initial embedding generation - userId: {}", user.getId());
 
-        // 1. Assemble Request DTO for AI server
         List<UserEmbedding.InterestKeyword> keywordItems = selectedKeywords.stream()
                 .map(keyword -> UserEmbedding.InterestKeyword.builder()
                         .keywordId(keyword.getId())
                         .word(keyword.getWord())
                         .embedding(keyword.getEmbedding())
                         .build())
-                .collect(Collectors.toList());
+                .toList();
 
         UserEmbedding.InitRequest request = UserEmbedding.InitRequest.builder()
                 .userId(user.getId())
@@ -49,57 +54,87 @@ public class UserVectorService {
                 .build();
 
         try {
-            // 2. Call FastAPI server (v1/users/init-embedding)
             UserEmbedding.Response response = aiClient.initUserEmbedding(request);
-
             if (response == null || response.getEmbedding() == null) {
                 throw new AiIntegrationException("Received empty embedding response from AI server.");
             }
-
             user.updateEmbedding(response.getEmbedding());
-
-            log.info(">>>> [UserVectorService] Successfully generated initial embedding - userId: {}", user.getId());
-
         } catch (Exception e) {
-            log.error(">>>> [UserVectorService] AI server communication failed - userId: {}, error: {}",
-                    user.getId(), e.getMessage());
-
+            log.error(">>>> [UserVectorService] AI server communication failed - userId: {}, error: {}", user.getId(), e.getMessage());
             throw new AiIntegrationException("Failed to initialize user embedding via AI server.");
         }
     }
 
+    /**
+     * 2. 뉴스 스크랩 시 임베딩 업데이트 (비동기)
+     */
     @Async("embeddingTaskExecutor")
     @Transactional
-    public void updateUserEmbeddingAsync(Long userId, Long newsId, String type) {
+    public void updateUserEmbeddingAsync(Long userId, Long newsId) {
         try {
-            UserScrap scrap = getOrElseThrow(userId, newsId);
+            UserScrap scrap = newsRepository.findScrapDetail(userId, newsId)
+                    .orElseThrow(() -> new ScrapNotFoundException("Scrap not found"));
 
             User user = scrap.getUser();
             News news = scrap.getNews();
+            
+            UserEmbedding.Activity activity = UserEmbedding.Activity.createNewsScrap(news, 0.5);
 
-            // AI 업데이트
-            UserEmbedding.Activity activity = UserEmbedding.Activity.createScrap(news, 0.5);
-            UserEmbedding.UpdateRequest req = UserEmbedding.UpdateRequest.builder()
-                    .userId(user.getId())
-                    .oldEmbedding(user.getEmbedding())
-                    .activities(List.of(activity))
-                    .decay(0.7)
-                    .build();
-            UserEmbedding.Response res = aiClient.updateUserEmbedding(req);
-
-            if (res != null && res.getEmbedding() != null) {
-                user.updateEmbedding(res.getEmbedding());
-                userRepository.saveAndFlush(user);
-                log.info(">>>> [AI Success] User: {}", userId);
-            }
+            sendUpdateToAi(user, activity);
 
         } catch (Exception e) {
-            log.error(">>>> [AI Error] Message: {}", e.getMessage());
+            log.error(">>>> [AI Error] News Update Failed: {}", e.getMessage());
         }
     }
 
-    private UserScrap getOrElseThrow(Long userId, Long newsId) {
-        return newsRepository.findScrapDetail(userId, newsId)
-                .orElseThrow(() -> new UserScrapNotFoundException("Scrap not found"));
+    /**
+     * 3. 키워드 요약(그래프 노드) 스크랩 시 임베딩 업데이트 (비동기)
+     */
+    @Async("embeddingTaskExecutor")
+    @Transactional
+    public void updateKeywordEmbeddingAsync(Long userId, Long keywordId) {
+        try {
+            User user = getUserElseThrow(userId);
+
+            Keyword keyword = getKeywordElseThrow(keywordId);
+
+            UserEmbedding.Activity activity = UserEmbedding.Activity.createKeywordActivity(keyword, 0.8);
+
+            sendUpdateToAi(user, activity);
+
+        } catch (Exception e) {
+            log.error(">>>> [AI Error] Keyword Update Failed: {}", e.getMessage());
+        }
+    }
+
+    private Keyword getKeywordElseThrow(Long keywordId) {
+        return keywordRepository.findById(keywordId)
+                .orElseThrow(() -> new KeywordNotFoundException("Keyword not found"));
+    }
+
+    private User getUserElseThrow(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+        return user;
+    }
+
+    /**
+     * 공통 AI 서버 통신 및 유저 벡터 갱신 로직
+     */
+    private void sendUpdateToAi(User user, UserEmbedding.Activity activity) {
+        UserEmbedding.UpdateRequest req = UserEmbedding.UpdateRequest.builder()
+                .userId(user.getId())
+                .oldEmbedding(user.getEmbedding())
+                .activities(List.of(activity))
+                .decay(0.7)
+                .build();
+
+        UserEmbedding.Response res = aiClient.updateUserEmbedding(req);
+
+        if (res != null && res.getEmbedding() != null) {
+            user.updateEmbedding(res.getEmbedding());
+            userRepository.saveAndFlush(user);
+            log.info(">>>> [AI Success] User Embedding Updated - ID: {}, Activity: {}", user.getId(), activity.getType());
+        }
     }
 }

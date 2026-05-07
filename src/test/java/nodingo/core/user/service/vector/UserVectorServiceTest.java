@@ -4,7 +4,7 @@ import nodingo.core.ai.client.AiClient;
 import nodingo.core.ai.dto.userEmbedding.UserEmbedding;
 import nodingo.core.global.exception.ai.AiIntegrationException;
 import nodingo.core.keyword.domain.Keyword;
-import nodingo.core.keyword.domain.NewsKeyword;
+import nodingo.core.keyword.repository.KeywordRepository;
 import nodingo.core.news.domain.News;
 import nodingo.core.news.repository.NewsRepository;
 import nodingo.core.user.domain.User;
@@ -35,21 +35,25 @@ class UserVectorServiceTest {
     @Mock private AiClient aiClient;
     @Mock private UserRepository userRepository;
     @Mock private NewsRepository newsRepository;
+    @Mock private KeywordRepository keywordRepository;
+
+    private final Long userId = 1L;
+    private final float[] oldEmbedding = {0.1f, 0.1f, 0.1f};
+    private final float[] newEmbedding = {0.9f, 0.9f, 0.9f};
 
     @Test
-    @DisplayName("성공: 초기 키워드를 바탕으로 AI 서버에서 임베딩을 받아 유저에게 설정한다")
+    @DisplayName("성공: 초기 온보딩 키워드로 AI 서버에서 임베딩을 받아 유저에게 설정한다")
     void initUserEmbedding_Success() {
         // given
-        User user = spy(User.create("google", "sub-123", "sungmin", "성민", "test@test.com"));
+        User user = spy(createMockUser());
         List<Keyword> selectedKeywords = List.of(
                 createMockKeyword(1L, "정치", new float[]{0.1f, 0.1f}),
                 createMockKeyword(2L, "경제", new float[]{0.2f, 0.2f})
         );
 
-        float[] expectedEmbedding = {0.5f, 0.5f, 0.5f};
         UserEmbedding.Response mockResponse = UserEmbedding.Response.builder()
-                .userId(1L)
-                .embedding(expectedEmbedding)
+                .userId(userId)
+                .embedding(newEmbedding)
                 .build();
 
         given(aiClient.initUserEmbedding(any())).willReturn(mockResponse);
@@ -58,33 +62,24 @@ class UserVectorServiceTest {
         userVectorService.initUserEmbedding(user, selectedKeywords);
 
         // then
-        verify(user).updateEmbedding(expectedEmbedding);
+        verify(user).updateEmbedding(newEmbedding);
         verify(aiClient).initUserEmbedding(any());
     }
 
     @Test
-    @DisplayName("성공: 스크랩 정보를 바탕으로 유저 임베딩을 업데이트하고 저장한다")
+    @DisplayName("성공: 뉴스 스크랩 정보를 바탕으로 유저 임베딩을 비동기 업데이트한다")
     void updateUserEmbeddingAsync_Success() {
         // given
-        Long userId = 1L;
         Long newsId = 100L;
-
-        User user = spy(User.create("google", "sub-123", "sungmin", "성민", "test@test.com"));
+        User user = spy(createMockUser());
         News news = mock(News.class);
         UserScrap scrap = mock(UserScrap.class);
 
         given(newsRepository.findScrapDetail(userId, newsId)).willReturn(Optional.of(scrap));
+        given(scrap.getUser()).willReturn(user);
+        given(scrap.getNews()).willReturn(news);
+        given(news.getEmbedding()).willReturn(new float[]{0.5f, 0.5f});
 
-        org.mockito.Mockito.lenient().when(scrap.getUser()).thenReturn(user);
-        org.mockito.Mockito.lenient().when(scrap.getNews()).thenReturn(news);
-
-        // News 내부에 키워드 리스트 세팅
-        Keyword mockKeyword = mock(Keyword.class);
-        NewsKeyword mockNewsKeyword = mock(NewsKeyword.class);
-        org.mockito.Mockito.lenient().when(news.getNewsKeywords()).thenReturn(List.of(mockNewsKeyword));
-        org.mockito.Mockito.lenient().when(mockNewsKeyword.getKeyword()).thenReturn(mockKeyword);
-
-        float[] newEmbedding = {0.1f, 0.2f, 0.3f};
         UserEmbedding.Response mockRes = UserEmbedding.Response.builder()
                 .userId(userId)
                 .embedding(newEmbedding)
@@ -93,7 +88,7 @@ class UserVectorServiceTest {
         given(aiClient.updateUserEmbedding(any())).willReturn(mockRes);
 
         // when
-        userVectorService.updateUserEmbeddingAsync(userId, newsId, "SCRAP");
+        userVectorService.updateUserEmbeddingAsync(userId, newsId);
 
         // then
         verify(user).updateEmbedding(newEmbedding);
@@ -101,11 +96,40 @@ class UserVectorServiceTest {
     }
 
     @Test
-    @DisplayName("실패: AI 서버 통신 중 예외 발생 시 AiIntegrationException으로 래핑된다")
-    void initUserEmbedding_Fail_CommunicationError() {
+    @DisplayName("성공: 키워드 요약 스크랩 정보를 바탕으로 유저 임베딩을 비동기 업데이트한다")
+    void updateKeywordEmbeddingAsync_Success() {
         // given
-        User user = User.create("google", "sub-123", "sungmin", "성민", "test@test.com");
-        given(aiClient.initUserEmbedding(any())).willThrow(new RuntimeException("Connection Refused"));
+        Long keywordId = 50L;
+        User user = spy(createMockUser());
+        Keyword keyword = createMockKeyword(keywordId, "테스트키워드", new float[]{0.8f, 0.8f});
+
+        given(userRepository.findById(userId)).willReturn(Optional.of(user));
+        given(keywordRepository.findById(keywordId)).willReturn(Optional.of(keyword));
+
+        UserEmbedding.Response mockRes = UserEmbedding.Response.builder()
+                .userId(userId)
+                .embedding(newEmbedding)
+                .build();
+
+        given(aiClient.updateUserEmbedding(any())).willReturn(mockRes);
+
+        // when
+        userVectorService.updateKeywordEmbeddingAsync(userId, keywordId);
+
+        // then
+        verify(user).updateEmbedding(newEmbedding);
+        verify(userRepository).saveAndFlush(user);
+        verify(aiClient).updateUserEmbedding(argThat(req ->
+                req.getActivities().get(0).getType().equals("CLICK") // AI 서버 전달 타입 검증
+        ));
+    }
+
+    @Test
+    @DisplayName("실패: 초기 임베딩 생성 시 AI 서버 에러가 발생하면 AiIntegrationException을 던진다")
+    void initUserEmbedding_Fail() {
+        // given
+        User user = createMockUser();
+        given(aiClient.initUserEmbedding(any())).willThrow(new RuntimeException("AI Server Error"));
 
         // when & then
         assertThrows(AiIntegrationException.class, () ->
@@ -113,12 +137,18 @@ class UserVectorServiceTest {
         );
     }
 
-    // --- Helper Method ---
+    // --- Helper Methods ---
+    private User createMockUser() {
+        User user = User.create("google", "sub-123", "sungmin", "성민", "test@test.com");
+        user.updateEmbedding(oldEmbedding);
+        return user;
+    }
+
     private Keyword createMockKeyword(Long id, String word, float[] embedding) {
         Keyword k = mock(Keyword.class);
-        given(k.getId()).willReturn(id);
-        given(k.getWord()).willReturn(word);
-        given(k.getEmbedding()).willReturn(embedding);
+        lenient().when(k.getId()).thenReturn(id);
+        lenient().when(k.getWord()).thenReturn(word);
+        lenient().when(k.getEmbedding()).thenReturn(embedding);
         return k;
     }
 }

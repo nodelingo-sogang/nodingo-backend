@@ -9,8 +9,8 @@ import nodingo.core.global.exception.news.NewsIllegalException;
 import nodingo.core.global.exception.news.NewsNotFoundException;
 import nodingo.core.global.exception.recommendKeyword.RecommendKeywordNotFoundException;
 import nodingo.core.global.exception.user.UserNotFoundException;
-import nodingo.core.global.exception.userScrap.DuplicateScrapException;
-import nodingo.core.global.exception.userScrap.UserScrapNotFoundException;
+import nodingo.core.global.exception.scrap.DuplicateScrapException;
+import nodingo.core.global.exception.scrap.ScrapNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -71,8 +71,8 @@ public class GlobalExceptionHandler {
     }
 
     //UserScrapNotFoundException
-    @ExceptionHandler(UserScrapNotFoundException.class)
-    protected ResponseEntity<ApiResponse<?>> handleUserScrapNotFoundException(UserScrapNotFoundException e) {
+    @ExceptionHandler(ScrapNotFoundException.class)
+    protected ResponseEntity<ApiResponse<?>> handleUserScrapNotFoundException(ScrapNotFoundException e) {
         return buildErrorResponse(HttpStatus.NOT_FOUND, e.getMessage());
     }
 
