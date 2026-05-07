@@ -10,7 +10,7 @@ import java.util.Optional;
 import static nodingo.core.user.domain.QUserScrap.userScrap;
 
 @RequiredArgsConstructor
-public class UserScrapRepositoryCustomImpl implements UserScrapRepositoryCustom {
+public class UserScrapRepositoryImpl implements UserScrapRepositoryCustom {
 
     private final JPAQueryFactory queryFactory;
 
