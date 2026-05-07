@@ -1,4 +1,4 @@
-package nodingo.core.batch.scheduler;
+package nodingo.core.news.scheduler;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -7,6 +7,7 @@ import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -19,6 +20,7 @@ import java.util.UUID;
 public class NewsScheduler {
 
     private final JobLauncher jobLauncher;
+    @Qualifier("dailyNewsJob")
     private final Job dailyNewsJob;
 
     @Scheduled(cron = "0 0 5 * * *", zone = "Asia/Seoul")
