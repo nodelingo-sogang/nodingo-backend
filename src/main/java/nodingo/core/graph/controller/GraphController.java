@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Graph", description = "이슈 맵 그래프 시각화 관련 API")
 @RestController
-@RequestMapping("/api/v1/graph")
+@RequestMapping("/api/graph")
 @RequiredArgsConstructor
 public class GraphController {
 
