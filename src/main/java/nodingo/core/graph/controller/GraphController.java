@@ -49,7 +49,7 @@ public class GraphController {
     @GetMapping("/nodes")
     public ResponseEntity<ApiResponse<GraphDataResponse>> getGraphNodes(
             @AuthenticationPrincipal CustomOAuth2User customOAuth2User,
-            @RequestParam Long keywordId) {
+            @RequestParam(required = false) Long keywordId) {
         GraphDataResult result = graphQueryService.getGraphPreview(customOAuth2User.getUser().getId(), keywordId);
         return ResponseEntity.ok(new ApiResponse<>(true, 200, "성공적으로 그래프 시각화 데이터를 조회했습니다.", GraphDataResponse.from(result)));
     }
