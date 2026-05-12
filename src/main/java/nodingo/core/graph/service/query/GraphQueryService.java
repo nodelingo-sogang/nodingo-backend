@@ -44,21 +44,33 @@ public class GraphQueryService {
         return TabListResult.of(tabs);
     }
 
-    @Cacheable(value = "batch:graph", key = "#userId + ':' + #centralKeywordId")
+    @Cacheable(value = "batch:graph", key = "#userId + ':' + (#centralKeywordId == null ? 'ALL' : #centralKeywordId)")
     public GraphDataResult getGraphPreview(Long userId, Long centralKeywordId) {
-        log.info("[GraphQueryService] Generating customized graph - User: {}, CentralKeyword: {}", userId, centralKeywordId);
 
+        // 1. 유저의 추천 키워드 맵 가져오기
         Map<Long, RecommendKeyword> recommendMap = getRecommendKeywordMap(userId);
+        List<KeywordRelation> targetRelations;
 
-        // 2. 중심 키워드 기준 상위 8개 관계 조회
-        List<KeywordRelation> topRelations = keywordRelationRepository
-                .findTopRelations(centralKeywordId, PageRequest.of(0, RELATED_KEYWORD_LIMIT))
-                .getContent();
+        if (centralKeywordId == null) {
+            // [전체 보기 로직]
+            // getTodayTabs와 동일하게 상위 4개(KEYWORD_LIMIT) 키워드 ID만 추출
+            List<Long> topTabIds = recommendMap.values().stream()
+                    .sorted(Comparator.comparingDouble(RecommendKeyword::getScore).reversed())
+                    .limit(KEYWORD_LIMIT)
+                    .map(rk -> rk.getKeyword().getId())
+                    .toList();
 
-        // 3. AI 서버(FastAPI)용 Request 빌드
-        GraphPreview.Request aiRequest = createAiRequest(centralKeywordId, topRelations, recommendMap);
+            // 🚀 중요: 이 4개 노드들끼리 연결된 모든 선(Edge)을 가져옴
+            targetRelations = keywordRelationRepository.findAllRelationsIn(topTabIds);
+        } else {
+            // [특정 탭 클릭 로직] 기존 유지
+            targetRelations = keywordRelationRepository
+                    .findTopRelations(centralKeywordId, PageRequest.of(0, 8))
+                    .getContent();
+        }
 
-        // 4. FastAPI 서버 호출 및 결과 변환
+        // 2. AI 서버(FastAPI) 호출
+        GraphPreview.Request aiRequest = createAiRequest(centralKeywordId, targetRelations, recommendMap);
         GraphPreview.Response aiResponse = aiClient.getGraphPreview(aiRequest);
 
         return GraphDataResult.from(aiResponse);

@@ -23,8 +23,8 @@ public class KeywordRelationRepositoryImpl implements KeywordRelationRepositoryC
         List<KeywordRelation> content = queryFactory
                 .selectFrom(kr)
                 .where(
-                        kr.subjectKeyword.id.eq(keywordId) // 🚀 subjectKeyword로 수정
-                                .or(kr.relatedKeyword.id.eq(keywordId)) // 🚀 relatedKeyword로 수정
+                        kr.subjectKeyword.id.eq(keywordId)
+                                .or(kr.relatedKeyword.id.eq(keywordId))
                 )
                 .orderBy(kr.relationScore.desc())
                 .offset(pageable.getOffset())
@@ -32,5 +32,19 @@ public class KeywordRelationRepositoryImpl implements KeywordRelationRepositoryC
                 .fetch();
 
         return SliceUtil.checkLastPage(pageable, content);
+    }
+
+    @Override
+    public List<KeywordRelation> findAllRelationsIn(List<Long> keywordIds) {
+        QKeywordRelation kr = QKeywordRelation.keywordRelation;
+
+        return queryFactory
+                .selectFrom(kr)
+                .where(
+                        kr.subjectKeyword.id.in(keywordIds)
+                                .and(kr.relatedKeyword.id.in(keywordIds))
+                )
+                .orderBy(kr.relationScore.desc())
+                .fetch();
     }
 }

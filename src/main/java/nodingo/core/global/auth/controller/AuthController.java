@@ -30,19 +30,22 @@ public class AuthController {
     })
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<ReissueTokenResponse>> refreshToken(
-            @RequestHeader(value = JwtConstants.HEADER_STRING, required = false) String authHeader,
+            @RequestHeader(value = JwtConstants.HEADER_STRING) String authHeader,
             @Valid @RequestBody ReissueTokenRequest request) {
-
         String accessToken = extractAccessToken(authHeader);
         ReissueTokenResponse response = authCommandService.reissue(accessToken, request.getRefreshToken());
         return ResponseEntity.ok(new ApiResponse<>(true, 200, "토큰이 재발급되었습니다.", response));
     }
 
     @Operation(summary = "로그아웃", description = "서버에서 리프레시 토큰을 삭제하고 해당 액세스 토큰을 무효화합니다.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "로그아웃 성공"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "유효하지 않은 토큰")
+    })
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout(
             @AuthenticationPrincipal CustomOAuth2User customOAuth2User,
-            @RequestHeader(value = JwtConstants.HEADER_STRING, required = false) String authHeader) {
+            @RequestHeader(value = JwtConstants.HEADER_STRING) String authHeader) {
         String accessToken = extractAccessToken(authHeader);
         authCommandService.logout(customOAuth2User.getUser(), accessToken);
         return ResponseEntity.ok(new ApiResponse<>(true, 200, "성공적으로 로그아웃되었습니다.", null));
