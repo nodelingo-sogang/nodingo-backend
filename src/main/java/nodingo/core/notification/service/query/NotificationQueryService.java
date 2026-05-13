@@ -2,6 +2,7 @@ package nodingo.core.notification.service.query;
 
 import lombok.RequiredArgsConstructor;
 import nodingo.core.notification.domain.NotificationSetting;
+import nodingo.core.notification.dto.result.NotificationResult;
 import nodingo.core.notification.repository.NotificationSettingRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,5 +16,11 @@ public class NotificationQueryService {
 
     public List<NotificationSetting> getTargetSettings(int hour) {
         return notificationSettingRepository.findSettingsByHour(hour);
+    }
+
+    public NotificationResult getNotificationSetting(Long userId) {
+        return notificationSettingRepository.findByUserId(userId)
+                .map(NotificationResult::from)
+                .orElse(null);
     }
 }

@@ -9,19 +9,23 @@ import nodingo.core.global.auth.CustomOAuth2User;
 import nodingo.core.global.dto.response.ApiResponse;
 import nodingo.core.notification.dto.command.NotificationCommand;
 import nodingo.core.notification.dto.request.NotificationRequest;
+import nodingo.core.notification.dto.response.NotificationResponse;
+import nodingo.core.notification.dto.result.NotificationResult;
 import nodingo.core.notification.service.command.FcmService;
 import nodingo.core.notification.service.command.NotificationService;
+import nodingo.core.notification.service.query.NotificationQueryService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Notification", description = "알림 관련 API")
 @RestController
-@RequestMapping("/api/notification")
+@RequestMapping("/api/users/notifications")
 @RequiredArgsConstructor
 public class NotificationController {
 
     private final NotificationService notificationService;
+    private final NotificationQueryService notificationQueryService;
     private final FcmService fcmService;
 
     @Operation(
@@ -31,16 +35,30 @@ public class NotificationController {
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "성공적으로 알림 설정이 저장되었습니다.")
     })
-    @PostMapping("/setting")
+    @PostMapping
     public ResponseEntity<ApiResponse<Void>> setNotification(
             @AuthenticationPrincipal CustomOAuth2User customOAuth2User,
             @Valid @RequestBody NotificationRequest request) {
         notificationService.updateNotificationSetting(NotificationCommand.of(customOAuth2User.getUser().getId(), request));
-        return ResponseEntity.ok(new ApiResponse<>(true, 200, "성공적으로 알림 설정이 저장되었습니다.", null));
+        return ResponseEntity.ok(new ApiResponse<>(true, 200, "성공적으로 알림 설정이 저장되었습니다."));
+    }
+
+    @Operation(
+            summary = "유저 알림 설정 조회",
+            description = "유저가 설정한 뉴스 요약 알림 시간과 FCM 토큰 정보를 조회합니다. 설정이 없으면 null을 반환합니다."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "성공적으로 알림 설정을 조회했습니다.")
+    })
+    @GetMapping
+    public ResponseEntity<ApiResponse<NotificationResponse>> getNotification(
+            @AuthenticationPrincipal CustomOAuth2User customOAuth2User) {
+        NotificationResult result = notificationQueryService.getNotificationSetting(customOAuth2User.getUser().getId());
+        return ResponseEntity.ok(new ApiResponse<>(true, 200, "성공적으로 알림 설정을 조회했습니다.", NotificationResponse.from(result)));
     }
 
     @Operation(summary = "FCM 단건 전송 임시 테스트", description = "DB에 저장된 토큰을 입력해 직접 알림을 테스트합니다.")
-    @PostMapping("/test-push")
+    @PostMapping("/test")
     public ResponseEntity<String> testPush(@RequestParam String token) {
         fcmService.sendTestMessage(token);
         return ResponseEntity.ok("FCM 전송 요청 완료! (서버 로그와 기기를 확인하세요)");
