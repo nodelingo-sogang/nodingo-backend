@@ -35,7 +35,7 @@ public interface AiClient {
     UserEmbedding.Response initUserEmbedding(@RequestBody UserEmbedding.InitRequest request);
 
     /**
-     * 4. 유저 활동(스크랩, 클릭) 기반 임베딩 업데이트
+     * 4. 유저 활동(뉴스 스크랩, 키워드 노드 스크랩) 기반 임베딩 업데이트
      */
     @PostMapping("/v1/users/update-embedding")
     UserEmbedding.Response updateUserEmbedding(@RequestBody UserEmbedding.UpdateRequest request);

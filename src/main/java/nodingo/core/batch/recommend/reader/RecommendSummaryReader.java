@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Map;
 
 @Configuration
@@ -22,9 +23,9 @@ public class RecommendSummaryReader {
     @Bean
     @StepScope
     public JpaPagingItemReader<RecommendKeyword> recommendSummaryItemReader(
-            @Value("#{jobParameters['targetDate']}") String targetDateStr
+            @Value("#{jobParameters['requestTime']}") LocalDateTime requestTime
     ) {
-        LocalDate targetDate = LocalDate.parse(targetDateStr);
+        LocalDate targetDate = (requestTime != null) ? requestTime.toLocalDate() : LocalDate.now();
 
         return new JpaPagingItemReaderBuilder<RecommendKeyword>()
                 .name("recommendSummaryItemReader")
