@@ -1,4 +1,4 @@
-package nodingo.core.global.config.news;
+package nodingo.core.global.config.batch;
 
 import com.google.firebase.messaging.Message;
 import lombok.RequiredArgsConstructor;
@@ -27,9 +27,9 @@ import java.util.List;
 @Slf4j
 @Configuration
 @RequiredArgsConstructor
-public class NewsBatchConfig {
+public class BatchConfig {
 
-    private static final int NEWS_CHUNK_SIZE = 10;
+    private static final int NEWS_CHUNK_SIZE = 100;
     private static final int USER_CHUNK_SIZE = 100;
     private static final int SUMMARY_CHUNK_SIZE=100;
 

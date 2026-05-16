@@ -68,7 +68,7 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 )
 class NewsBatchIntegrationTest {
 
-    private static final int EMBEDDING_DIMENSION = 1024;
+    private static final int EMBEDDING_DIMENSION = 1536;
 
     @Autowired
     private JobLauncher jobLauncher;

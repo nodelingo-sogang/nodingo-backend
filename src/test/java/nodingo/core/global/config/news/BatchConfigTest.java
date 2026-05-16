@@ -4,6 +4,7 @@ import com.google.firebase.messaging.Message;
 import nodingo.core.batch.dto.article.NewsApiItem;
 import nodingo.core.batch.listener.MyJobListener;
 
+import nodingo.core.global.config.batch.BatchConfig;
 import nodingo.core.keyword.domain.RecommendKeyword;
 import nodingo.core.news.domain.News;
 import nodingo.core.notification.domain.NotificationSetting;
@@ -29,12 +30,11 @@ import org.springframework.batch.item.ItemWriter;
 import java.util.List;
 
 
-import org.springframework.batch.core.job.SimpleJob;
 import static org.assertj.core.api.Assertions.assertThat;
 // ... (나머지 import 동일)
 
 @ExtendWith(MockitoExtension.class)
-class NewsBatchConfigTest {
+class BatchConfigTest {
 
     @Mock private JobRepository jobRepository;
     @Mock private PlatformTransactionManager transactionManager;
@@ -54,11 +54,11 @@ class NewsBatchConfigTest {
     @Mock private ItemProcessor<NotificationSetting, Message> notificationProcessor;
     @Mock private ItemWriter<Message> fcmBatchWriter;
 
-    private NewsBatchConfig config;
+    private BatchConfig config;
 
     @BeforeEach
     void setUp() {
-        config = new NewsBatchConfig(jobRepository, transactionManager, myJobListener);
+        config = new BatchConfig(jobRepository, transactionManager, myJobListener);
     }
 
     @Test

@@ -1,5 +1,6 @@
 package nodingo.core.ai.dto.newsBatch;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -13,7 +14,9 @@ public class NewsBatch {
     @NoArgsConstructor @AllArgsConstructor
     public static class Request {
         private List<NewsInput> news;
+        @JsonProperty("existing_keywords")
         private List<ExistingKeywordInput> existingKeywords;
+        @JsonProperty("top_k_keywords")
         private int topKKeywords;
     }
 
@@ -49,6 +52,7 @@ public class NewsBatch {
     public static class NewsAnalysisResult {
         private Long newsId;
         private float[] embedding;
+        private String summary;
         private List<KeywordAiResult> keywords;
 
     }
