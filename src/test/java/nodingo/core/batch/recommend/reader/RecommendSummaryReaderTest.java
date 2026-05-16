@@ -10,6 +10,7 @@ import org.springframework.batch.item.database.JpaPagingItemReader;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -30,10 +31,10 @@ class RecommendSummaryReaderTest {
     @DisplayName("RecommendSummary JpaPagingItemReader가 정상적인 쿼리와 파라미터 설정으로 생성되어야 한다")
     void recommendSummaryItemReaderCreationTest() {
         // given
-        String dummyTargetDate = "2026-05-06";
+        LocalDateTime dummyRequestTime = LocalDateTime.of(2026, 5, 16, 10, 0, 0);
 
         // when
-        JpaPagingItemReader<RecommendKeyword> reader = recommendSummaryReader.recommendSummaryItemReader(dummyTargetDate);
+        JpaPagingItemReader<RecommendKeyword> reader = recommendSummaryReader.recommendSummaryItemReader(dummyRequestTime);
 
         // then
         assertThat(reader).isNotNull();
@@ -44,6 +45,7 @@ class RecommendSummaryReaderTest {
         Map<String, Object> parameterValues = (Map<String, Object>) ReflectionTestUtils.getField(reader, "parameterValues");
         assertThat(queryString).isEqualTo("SELECT r FROM RecommendKeyword r WHERE r.targetDate = :targetDate");
         assertThat(pageSize).isEqualTo(100);
-        assertThat(parameterValues).containsEntry("targetDate", LocalDate.parse(dummyTargetDate));
+
+        assertThat(parameterValues).containsEntry("targetDate", dummyRequestTime.toLocalDate());
     }
 }
