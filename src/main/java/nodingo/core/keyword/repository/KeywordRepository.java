@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,7 +19,7 @@ public interface KeywordRepository extends JpaRepository<Keyword, Long>, Keyword
     // 특정 중분류 하위의 소분류 조회
     List<Keyword> findAllByParentIdAndLevel(Long parentId, InterestLevel level);
 
-    Optional<Keyword> findByNormalizedWord(String normalizedWord);
+    List<Keyword> findByNormalizedWordIn(Collection<String> normalizedWords);
 
     @Query("SELECT ka.keyword FROM KeywordAlias ka WHERE ka.alias = :alias")
     Optional<Keyword> findByAlias(@Param("alias") String alias);

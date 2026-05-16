@@ -1,9 +1,7 @@
 spring:
   application:
     name: core
-  mvc:
-    pathmatch:
-      matching-strategy: ant_path_matcher
+
   config:
     import: optional:file:.env[.properties]
 
@@ -60,6 +58,12 @@ spring:
   cloud:
     compatibility-verifier:
       enabled: false
+    openfeign:
+      client:
+        config:
+          default:
+            connectTimeout: 10000
+            readTimeout: 600000
 
   security:
     oauth2:

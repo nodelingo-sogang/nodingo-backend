@@ -31,7 +31,7 @@ import java.util.List;
 )
 public class User extends BaseTimeEntity implements UserDetails {
 
-    private static final int EMBEDDING_DIMENSION = 1024;
+    private static final int EMBEDDING_DIMENSION = 1536;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -55,7 +55,7 @@ public class User extends BaseTimeEntity implements UserDetails {
     private String refreshToken;
 
     @JdbcTypeCode(SqlTypes.VECTOR)
-    @Column(columnDefinition = "vector(1024)")
+    @Column(columnDefinition = "vector(1536)")
     private float[] embedding;
 
     @ElementCollection(fetch = FetchType.LAZY)

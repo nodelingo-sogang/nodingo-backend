@@ -28,7 +28,7 @@ import java.util.ArrayList;
 )
 public class News extends BaseTimeEntity {
 
-    private static final int EMBEDDING_DIMENSION = 1024;
+    private static final int EMBEDDING_DIMENSION = 1536;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -61,7 +61,7 @@ public class News extends BaseTimeEntity {
 
     // pgvector 임베딩
     @JdbcTypeCode(SqlTypes.VECTOR)
-    @Column(columnDefinition = "vector(1024)")
+    @Column(columnDefinition = "vector(1536)")
     private float[] embedding;
 
     @OneToMany(mappedBy = "news", cascade = CascadeType.ALL, orphanRemoval = true)

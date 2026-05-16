@@ -4,12 +4,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nodingo.core.ai.client.AiClient;
 import nodingo.core.ai.dto.newsBatch.NewsBatch;
-import nodingo.core.batch.service.cache.KeywordCacheService;
-import nodingo.core.global.util.NewsSummarizer;
 import nodingo.core.keyword.domain.Keyword;
 import nodingo.core.keyword.domain.KeywordRelation;
 import nodingo.core.keyword.repository.KeywordRelationRepository;
 import nodingo.core.keyword.repository.KeywordRepository;
+import nodingo.core.keyword.service.query.KeywordQueryService;
 import nodingo.core.news.domain.News;
 import nodingo.core.news.repository.NewsRepository;
 import org.springframework.batch.core.configuration.annotation.StepScope;
@@ -17,11 +16,8 @@ import org.springframework.batch.item.Chunk;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -35,8 +31,7 @@ public class NewsAiWriter implements ItemWriter<News> {
     private final KeywordRepository keywordRepository;
     private final KeywordRelationRepository keywordRelationRepository;
     private final AiClient aiClient;
-    private final NewsSummarizer newsSummarizer;
-    private final KeywordCacheService keywordCacheService;
+    private final KeywordQueryService keywordQueryService;
 
     private static final int TOP_K_KEYWORDS = 5;
 
@@ -52,10 +47,10 @@ public class NewsAiWriter implements ItemWriter<News> {
         Map<Long, News> newsMap = savedNews.stream()
                 .collect(Collectors.toMap(News::getId, Function.identity()));
 
-        // 2. Redis 메모리에서 키워드 가져오기
-        List<NewsBatch.ExistingKeywordInput> existingKeywords = keywordCacheService.getAllKeywords();
+        // 2. 파이썬 전송용 기존 키워드 목록 비우기 (메모리 및 직렬화 에러 방지)
+        List<NewsBatch.ExistingKeywordInput> existingKeywords = new ArrayList<>();
 
-        // 3. AI 분석 요청 객체 생성 (Chunk 단위 통째로 요청)
+        // 3. AI 분석 요청 객체 생성
         NewsBatch.Request request = NewsBatch.Request.builder()
                 .news(savedNews.stream()
                         .map(n -> NewsBatch.NewsInput.builder()
@@ -68,48 +63,54 @@ public class NewsAiWriter implements ItemWriter<News> {
                 .topKKeywords(TOP_K_KEYWORDS)
                 .build();
 
-        log.info(">>>> [Batch Writer] Requesting AI analysis for {} news articles...", savedNews.size());
+        log.info(">>>> [Batch Writer] Requesting AI analysis for {} news articles. (Chunk size: {})",
+                savedNews.size(), items.size());
 
         // 4. FastAPI 서버 호출
         NewsBatch.Response aiResponse = aiClient.analyzeNewsBatch(request);
 
-        // 신규 생성 키워드 로컬 캐시
-        Map<String, Keyword> newKeywordCache = new HashMap<>();
+        // 5. AI 분석 결과 반영 (임베딩 및 요약본 업데이트)
+        for (NewsBatch.NewsAnalysisResult res : aiResponse.getNewsResults()) {
+            News news = newsMap.get(res.getNewsId());
+            if (news != null) {
+                news.updateEmbedding(res.getEmbedding());
+                news.updateBody(res.getSummary()); // 파이썬이 던져준 200자 요약본 반영
+            }
+        }
 
-        // 5. AI 분석 결과 반영
+        // 6. DB Bulk 조회 준비: 이번 Chunk에서 나온 키워드만 Set으로 추출
+        Set<String> extractedWords = aiResponse.getNewsResults().stream()
+                .flatMap(res -> res.getKeywords().stream())
+                .map(NewsBatch.KeywordAiResult::getNormalizedWord)
+                .collect(Collectors.toSet());
+
+        // 7. KeywordQueryService 호출
+        Map<String, Keyword> existingKeywordMap = keywordQueryService.getExistingKeywordsMap(extractedWords);
+
+        // 8. 키워드 매핑 및 신규 저장
         for (NewsBatch.NewsAnalysisResult res : aiResponse.getNewsResults()) {
             News news = newsMap.get(res.getNewsId());
             if (news == null) continue;
 
-            news.updateEmbedding(res.getEmbedding());
-            String summary = newsSummarizer.summarize(news);
-            news.updateBody(summary);
-
             for (NewsBatch.KeywordAiResult kwRes : res.getKeywords()) {
-                Keyword keyword;
+                String normWord = kwRes.getNormalizedWord();
 
-                if (kwRes.isNew()) {
-                    keyword = newKeywordCache.get(kwRes.getNormalizedWord());
-                    if (keyword == null) {
-                        keyword = Keyword.create(kwRes.getWord());
-                        keyword.updateEmbedding(kwRes.getEmbedding());
-                        keyword = keywordRepository.save(keyword);
-                        newKeywordCache.put(kwRes.getNormalizedWord(), keyword);
-                    }
-                } else {
-                    keyword = keywordRepository.findById(kwRes.getKeywordId())
-                            .orElseGet(() -> keywordRepository.save(Keyword.create(kwRes.getWord())));
-                }
+                // Map에 있으면 QueryService가 가져온 기존 엔티티 사용, 없으면 새로 저장
+                Keyword keyword = existingKeywordMap.computeIfAbsent(normWord, key -> {
+                    Keyword newKw = Keyword.create(kwRes.getWord());
+                    newKw.updateEmbedding(kwRes.getEmbedding());
+                    return keywordRepository.save(newKw); // 진짜 새로운 녀석만 INSERT
+                });
 
                 news.addKeyword(keyword, kwRes.getWeight());
             }
         }
 
-        // 6. 뉴스 최종 업데이트
+        // 9. 뉴스 최종 업데이트
         newsRepository.saveAll(savedNews);
         log.info(">>>> [Batch Writer] Finished analyzing and summarizing {} news articles.", savedNews.size());
 
-        // 7. 키워드 관계 저장
+        // 10. 키워드 관계 저장
         if (aiResponse.getKeywordRelations() != null && !aiResponse.getKeywordRelations().isEmpty()) {
             List<KeywordRelation> relationsToSave = new ArrayList<>();
 
